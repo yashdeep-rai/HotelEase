@@ -50,6 +50,38 @@ app.get('/api/guests', async (req, res) => {
     }
 });
 
+
+
+// GET: Get all bookings with guest and room details
+app.get('/api/bookings', async (req, res) => {
+  try {
+    const query = `
+      SELECT
+        b.booking_id,
+        b.check_in_date,
+        b.check_out_date,
+        b.total_amount,
+        b.status,
+        g.first_name,
+        g.last_name,
+        g.email,
+        r.room_number,
+        r.room_type
+      FROM bookings b
+      JOIN guests g ON b.guest_id = g.guest_id
+      JOIN rooms r ON b.room_id = r.room_id
+      ORDER BY b.check_in_date DESC;
+    `;
+    const [rows] = await pool.query(query);
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Database query failed' });
+  }
+});
+
+
+
 // POST: Create a new booking
 app.post('/api/bookings', async (req, res) => {
   const { guest_id, room_id, check_in_date, check_out_date, total_amount } = req.body;
@@ -71,6 +103,32 @@ app.post('/api/bookings', async (req, res) => {
     res.status(201).json({ message: 'Booking created!', booking_id: result.insertId });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ error: 'Database insert failed' });
+  }
+});
+
+
+// POST: Create a new guest
+app.post('/api/guests', async (req, res) => {
+  const { first_name, last_name, email, phone } = req.body;
+
+  if (!first_name || !last_name || !email) {
+    return res.status(400).json({ error: 'First name, last name, and email are required' });
+  }
+
+  try {
+    const query = 'INSERT INTO guests (first_name, last_name, email, phone) VALUES (?, ?, ?, ?)';
+    const [result] = await pool.query(query, [first_name, last_name, email, phone]);
+    
+    // Respond with the newly created guest ID
+    res.status(201).json({ message: 'Guest created!', guest_id: result.insertId });
+  
+  } catch (error) {
+    console.error(error);
+    // Handle specific errors, like duplicate email
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'A guest with this email already exists.' });
+    }
     res.status(500).json({ error: 'Database insert failed' });
   }
 });

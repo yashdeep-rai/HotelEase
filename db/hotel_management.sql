@@ -45,3 +45,5 @@ INSERT INTO guests (first_name, last_name, email, phone)
 VALUES
 ('Alice', 'Smith', 'alice@example.com', '555-1234'),
 ('Bob', 'Johnson', 'bob@example.com', '555-5678');
+
+
