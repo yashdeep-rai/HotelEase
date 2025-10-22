@@ -13,12 +13,12 @@
 }
 
 .modal-content {
-    background-color: #2c2c2c;
+    background-color: #282828; /* Slightly lighter modal bg */
     padding: 2rem;
-    border-radius: 8px;
+    border-radius: 10px; /* More rounded */
     width: 90%;
     max-width: 500px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4); /* Stronger shadow */
     text-align: left;
     border: 1px solid #444;
 }
@@ -29,29 +29,36 @@
     align-items: center;
     border-bottom: 1px solid #444;
     padding-bottom: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
 }
 
 .modal-header h2 {
     margin: 0;
-    color: #646cff;
+    color: #fff;
+    font-size: 1.6rem;
 }
 
 .modal-close-btn {
     background: none;
     border: none;
-    color: white;
     font-size: 2.5rem;
     font-weight: bold;
     cursor: pointer;
     padding: 0;
     line-height: 1;
+    color: #aaa; /* Gray close button */
+    transition: color 0.2s;
+}
+
+.modal-close-btn:hover {
+    color: #fff;
 }
 
 .modal-body {
-    font-size: 1.1rem;
+    font-size: 1.05rem; /* Slightly smaller body */
     margin-bottom: 2rem;
-    line-height: 1.6;
+    line-height: 1.7; /* More line spacing */
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .modal-body p {

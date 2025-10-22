@@ -82,3 +82,73 @@
 .btn-icon {
     font-size: 1.1em;
 }
+
+/* --- Add these styles to BookingsListPage.css --- */
+
+/* Action Cell Layout */
+.action-cell {
+    display: flex;
+    gap: 0.5rem; /* Space between buttons */
+    align-items: center;
+}
+.action-cell .action-btn {
+    padding: 0.5em 0.8em; /* Slightly smaller buttons */
+}
+.action-cell .cancel-btn { /* Make cancel just an icon */
+    padding: 0.5em; 
+}
+.action-cell .btn-icon { /* Adjust icon size if needed */
+    font-size: 1.2em; 
+    margin-right: 0; /* Remove right margin if only icon */
+}
+.action-cell .cancel-btn .btn-icon {
+     margin-right: 0; /* Ensure no margin for icon-only button */
+}
+
+
+/* Check-in Button */
+.check-in-btn {
+    background-color: rgba(74, 222, 128, 0.1); /* Light green bg */
+    color: #4ade80; /* Green text */
+    border: 1px solid #4ade80;
+}
+.check-in-btn:hover {
+    background-color: #4ade80;
+    color: #1a1a1a; /* Dark text on hover */
+}
+
+/* Check-out Button */
+.check-out-btn {
+    background-color: rgba(240, 173, 78, 0.1); /* Light yellow bg */
+    color: #f0ad4e; /* Yellow text */
+    border: 1px solid #f0ad4e;
+}
+.check-out-btn:hover {
+    background-color: #f0ad4e;
+    color: #1a1a1a;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 0.3em 0.8em;
+    border-radius: 12px; /* Pill shape */
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+.status-confirmed {
+    background-color: rgba(128, 140, 255, 0.15); /* Light purple */
+    color: #a0a8ff;
+}
+.status-checked-in {
+    background-color: rgba(74, 222, 128, 0.15); /* Light green */
+    color: #4ade80;
+}
+.status-checked-out {
+    background-color: rgba(150, 150, 150, 0.15); /* Light gray */
+    color: #aaa;
+}
+.status-cancelled {
+    background-color: rgba(255, 107, 107, 0.15); /* Light red */
+    color: #ff8a8a;
+}

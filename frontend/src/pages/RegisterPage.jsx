@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import './RegisterPage.css'; // Reuse form CSS
+import { FiUserPlus } from 'react-icons/fi'; // 1. Import icon
 
 export default function RegisterPage() {
     const [firstName, setFirstName] = useState('');
@@ -9,7 +10,7 @@ export default function RegisterPage() {
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
-    
+
     const [message, setMessage] = useState(null);
     const [error, setError] = useState(null);
     const navigate = useNavigate();
@@ -23,11 +24,11 @@ export default function RegisterPage() {
             const response = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    first_name: firstName, 
-                    last_name: lastName, 
-                    email, 
-                    phone, 
+                body: JSON.stringify({
+                    first_name: firstName,
+                    last_name: lastName,
+                    email,
+                    phone,
                     password,
                     role: 'guest' // Default role
                 }),
@@ -36,7 +37,7 @@ export default function RegisterPage() {
             if (!response.ok) {
                 throw new Error(result.error || 'Failed to register');
             }
-            
+
             setMessage('Registration successful! Please login.');
             setTimeout(() => navigate('/login'), 2000);
 
@@ -70,12 +71,14 @@ export default function RegisterPage() {
                     <label htmlFor="password">Password</label>
                     <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
-                
-                <button type="submit" className="submit-btn">Register</button>
+
+                <button type="submit" className="submit-btn">
+                    <FiUserPlus className="btn-icon" /> Register {/* 2. Add icon */}
+                </button>
                 {message && <p className="success-message">{message}</p>}
                 {error && <p className="error-message">{error}</p>}
-                
-                <p style={{textAlign: 'center', marginTop: '1rem'}}>
+
+                <p style={{ textAlign: 'center', marginTop: '1rem' }}>
                     Already have an account? <Link to="/login">Login here</Link>
                 </p>
             </form>

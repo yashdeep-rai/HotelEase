@@ -116,7 +116,7 @@ export default function MyBookingsPage() {
                 <p>{infoModalContent.body}</p>
             </Modal>
 
-            <h1>My Bookings</h1>
+            <h1 className="page-title">My Bookings</h1>
             
             {loading && <p>Loading your bookings...</p>}
             {error && <p className="error-message">{error}</p>}
@@ -142,7 +142,7 @@ export default function MyBookingsPage() {
                                     <td>{booking.room_type}</td>
                                     <td>{formatDate(booking.check_in_date)}</td>
                                     <td>{formatDate(booking.check_out_date)}</td>
-                                    <td>${booking.total_amount}</td>
+                                    <td>₹{booking.total_amount}</td>
                                     <td>{booking.status}</td>
                                     <td>
                                         <button 

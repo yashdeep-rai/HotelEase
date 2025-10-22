@@ -4,6 +4,7 @@ import Modal from '../components/Modal';
 import './BookingsListPage.css'; // Re-use the table CSS
 import './UserManagementPage.css'; // Add new CSS for this page
 import '../components/Modal.css';
+import { FiTrash2 } from 'react-icons/fi'; // 1. Import icon
 
 export default function UserManagementPage() {
     const [users, setUsers] = useState([]);
@@ -60,7 +61,7 @@ export default function UserManagementPage() {
             setUsers(prevUsers =>
                 prevUsers.map(u => u.user_id === userId ? { ...u, role: newRole } : u)
             );
-            
+
             setInfoModalContent({ title: 'Success', body: "User role updated." });
             setIsInfoModalOpen(true);
 
@@ -98,7 +99,7 @@ export default function UserManagementPage() {
             setUsers(prevUsers =>
                 prevUsers.filter(u => u.user_id !== userToAction.user_id)
             );
-            
+
             setInfoModalContent({ title: 'Success', body: `User ${userToAction.email} has been deleted.` });
             setIsInfoModalOpen(true);
 
@@ -135,11 +136,11 @@ export default function UserManagementPage() {
                 <p>{infoModalContent.body}</p>
             </Modal>
 
-            <h1>User Management</h1>
-            
+            <h1 className="page-title">User Management</h1>
+
             {loading && <p>Loading users...</p>}
             {error && <p className="error-message">{error}</p>}
-            
+
             {!loading && !error && (
                 <table className="bookings-table">
                     <thead>
@@ -157,7 +158,7 @@ export default function UserManagementPage() {
                             users.map(user => {
                                 // Check if this row is the currently logged-in admin
                                 const isCurrentUser = user.user_id === authUser.id;
-                                
+
                                 return (
                                     <tr key={user.user_id}>
                                         <td>{user.user_id}</td>
@@ -176,12 +177,13 @@ export default function UserManagementPage() {
                                             </select>
                                         </td>
                                         <td>
-                                            <button 
-                                                className="action-btn cancel-btn"
+                                            <button
+                                                className="action-btn cancel-btn" // Re-using cancel style for delete
                                                 onClick={() => handleDeleteClick(user)}
-                                                disabled={isCurrentUser} // Disable deleting yourself
+                                                disabled={isCurrentUser}
+                                                title="Delete User" // Add title for clarity
                                             >
-                                                Delete
+                                                <FiTrash2 className="btn-icon" /> {/* 2. Add icon */}
                                             </button>
                                         </td>
                                     </tr>

@@ -4,6 +4,7 @@ import './BookingPage.css';
 import Modal from '../components/Modal';
 import '../components/Modal.css';
 import { useAuth } from '../context/AuthContext'; // 1. Import useAuth
+import { FiSearch, FiSend } from 'react-icons/fi'; // 1. Import icons
 
 // Helper function to get today's date in 'YYYY-MM-DD' format
 const getToday = () => {
@@ -24,7 +25,7 @@ export default function BookingPage() {
     const { user } = useAuth(); // 2. Call useAuth() INSIDE the component
 
     const [rooms, setRooms] = useState([]);
-    
+
     // State for dates
     const [checkIn, setCheckIn] = useState(getToday());
     const [checkOut, setCheckOut] = useState(getTomorrow());
@@ -35,13 +36,13 @@ export default function BookingPage() {
 
     // State for modals
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [roomToBook, setRoomToBook] = useState(null); 
+    const [roomToBook, setRoomToBook] = useState(null);
     const [modalContent, setModalContent] = useState({ title: '', body: '' });
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
     const [infoModalContent, setInfoModalContent] = useState({ title: '', body: '' });
 
     // --- Data Fetching ---
-    
+
     // Fetch available rooms
     const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
         try {
@@ -51,7 +52,7 @@ export default function BookingPage() {
             setRooms([]);
 
             // 3. Get token from auth context to send
-            const token = localStorage.getItem('token'); 
+            const token = localStorage.getItem('token');
 
             const response = await fetch(`/api/rooms/available?check_in=${searchCheckIn}&check_out=${searchCheckOut}`, {
                 headers: {
@@ -59,7 +60,7 @@ export default function BookingPage() {
                 }
             });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
+
             const data = await response.json();
             setRooms(data);
 
@@ -70,7 +71,7 @@ export default function BookingPage() {
             setLoading(false);
         }
     };
-    
+
     // 5. REMOVED: The useEffect for fetchGuests is no longer needed.
 
     // --- Event Handlers ---
@@ -107,13 +108,13 @@ export default function BookingPage() {
                 </>
             )
         });
-        
+
         setIsModalOpen(true);
     };
 
     // This function runs when "Confirm" is clicked
     const handleConfirmBooking = async () => {
-        if (!roomToBook || !user) return; 
+        if (!roomToBook || !user) return;
 
         setIsModalOpen(false);
 
@@ -122,7 +123,7 @@ export default function BookingPage() {
         const diffTime = Math.abs(date2 - date1);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const totalAmount = diffDays * roomToBook.rate;
-        
+
         // 7. Use the logged-in user's ID
         const bookingDetails = {
             guest_id: user.id, // This is now user_id, but our backend handles it
@@ -136,7 +137,7 @@ export default function BookingPage() {
             const token = localStorage.getItem('token');
             const response = await fetch('/api/bookings', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}` // 8. Add token to POST request
                 },
@@ -149,13 +150,13 @@ export default function BookingPage() {
             }
 
             const result = await response.json();
-            
+
             setInfoModalContent({
                 title: 'Booking Successful!',
                 body: `Your booking for Room ${roomToBook.room_number} is confirmed. Booking ID: ${result.booking_id}`
             });
             setIsInfoModalOpen(true);
-            
+
             fetchAvailableRooms(checkIn, checkOut);
 
         } catch (err) {
@@ -169,7 +170,7 @@ export default function BookingPage() {
             setRoomToBook(null);
         }
     };
-    
+
     // --- JSX Return ---
     return (
         <div className="booking-page">
@@ -193,7 +194,7 @@ export default function BookingPage() {
             </Modal>
 
             <h1>Book a Room</h1>
-            
+
             <form onSubmit={handleSearch} className="date-search-form">
                 <div className="date-group">
                     <label htmlFor="check-in">Check-in Date</label>
@@ -217,7 +218,9 @@ export default function BookingPage() {
                         required
                     />
                 </div>
-                <button type="submit" className="search-btn">Search Rooms</button>
+                <button type="submit" className="search-btn">
+                    <FiSearch className="btn-icon" /> Search Rooms {/* 2. Add icon */}
+                </button>
             </form>
 
             {/* 9. REMOVED: The entire "guest-selector-container" div is gone */}
@@ -225,7 +228,7 @@ export default function BookingPage() {
             {/* --- Room List --- */}
             {loading && <p>Searching for available rooms...</p>}
             {roomError && <p className="error-message">{roomError}</p>}
-            
+
             <div className="room-list">
                 {!loading && hasSearched && (
                     rooms.length > 0 ? (
@@ -235,12 +238,12 @@ export default function BookingPage() {
                                     <h3>Room {room.room_number}</h3>
                                     <span className="room-type">{room.room_type}</span>
                                 </div>
-                                <p><strong>Rate:</strong> ${room.rate} / night</p>
-                                <button 
-                                    onClick={() => handleBookRoom(room)} 
-                                    className="btn-primary" /* Use new class */
+                                <p><strong>Rate:</strong> ₹{room.rate} / night</p>
+                                <button
+                                    onClick={() => handleBookRoom(room)}
+                                    className="btn-primary"
                                 >
-                                    Book Now
+                                    <FiSend className="btn-icon" /> Book Now {/* 3. Add icon */}
                                 </button>
                             </div>
                         ))
@@ -249,7 +252,7 @@ export default function BookingPage() {
                     )
                 )}
             </div>
-            
+
             {!hasSearched && !loading &&
                 <p>Please select your dates and click "Search Rooms" to see availability.</p>
             }

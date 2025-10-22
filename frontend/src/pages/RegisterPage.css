@@ -59,3 +59,14 @@
     border-radius: 8px;
     border: 1px solid #4ade80;
 }
+
+/* --- Add Icon Styles --- */
+.submit-btn {
+    display: inline-flex; /* Align icon */
+    align-items: center;
+    justify-content: center; /* Center content */
+    gap: 0.5rem;
+}
+.btn-icon {
+    font-size: 1.2em;
+}

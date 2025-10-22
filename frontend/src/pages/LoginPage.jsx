@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import './RegisterPage.css'; // We'll reuse the register page's CSS
+import { FiLogIn } from 'react-icons/fi';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -23,10 +24,10 @@ export default function LoginPage() {
             if (!response.ok) {
                 throw new Error(data.error || 'Failed to login');
             }
-            
+
             // Call login from AuthContext
             login(data.token, data.user);
-            
+
             // --- THIS IS THE FIX ---
             if (data.user.role === 'admin') {
                 navigate('/dashboard'); // Redirect admin to Dashboard
@@ -52,11 +53,13 @@ export default function LoginPage() {
                     <label htmlFor="password">Password</label>
                     <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
-                
-                <button type="submit" className="submit-btn">Login</button>
+
+                <button type="submit" className="submit-btn">
+                    <FiLogIn className="btn-icon" /> Login {/* 2. Add icon */}
+                </button>
                 {error && <p className="error-message">{error}</p>}
-                
-                <p style={{textAlign: 'center', marginTop: '1rem'}}>
+
+                <p style={{ textAlign: 'center', marginTop: '1rem' }}>
                     Don't have an account? <Link to="/register">Register here</Link>
                 </p>
             </form>

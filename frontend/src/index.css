@@ -49,6 +49,7 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   color: #ffffff; /* Pure white for headings */
   line-height: 1.2;
+  letter-spacing: -0.5px; /* Slightly tighter letter spacing */
 }
 
 h1 { font-size: 2.8em; }
@@ -123,10 +124,24 @@ input:focus, select:focus {
     padding: 1.5rem;
     text-align: left;
     transition: all 0.25s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); /* Softer initial shadow */
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transform: translateY(-3px); /* Slightly less lift */
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); /* Enhanced hover shadow */
     border-color: #4a4a4a;
+}
+
+input:focus, select:focus {
+  border-color: #646cff;
+  outline: none;
+   /* Softer focus ring */
+  box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.2);
+}
+
+.page-title {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    color: #eee; /* Slightly off-white */
 }

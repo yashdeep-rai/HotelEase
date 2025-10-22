@@ -113,3 +113,14 @@
     background-color: #535bf2;
     border-color: #535bf2;
 }
+
+/* --- Add Icon Styles --- */
+.search-btn, .btn-primary {
+    display: inline-flex; /* Align icon */
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center; /* Center content */
+}
+.btn-icon {
+    font-size: 1.1em;
+}

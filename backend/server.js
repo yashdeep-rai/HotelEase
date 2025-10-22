@@ -215,6 +215,74 @@ app.get('/api/bookings', authenticateToken, authorizeRole('admin'), async (req, 
   }
 });
 
+// PUT: Update a booking's status (Check-in/Check-out)
+app.put('/api/bookings/:id/status', authenticateToken, authorizeRole('admin'), async (req, res) => {
+    const { id } = req.params;
+    const { status: newStatus } = req.body;
+
+    // Validate the new status
+    if (!newStatus || !['Checked-In', 'Checked-Out'].includes(newStatus)) {
+        return res.status(400).json({ error: 'Invalid or missing status. Must be "Checked-In" or "Checked-Out".' });
+    }
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 1. Get current booking status and room ID
+        const [rows] = await connection.query('SELECT status, room_id FROM bookings WHERE booking_id = ?', [id]);
+        if (rows.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'Booking not found' });
+        }
+        const currentStatus = rows[0].status;
+        const roomId = rows[0].room_id;
+
+        // 2. Perform validation based on current status
+        if (newStatus === 'Checked-In' && currentStatus !== 'Confirmed') {
+            await connection.rollback();
+            return res.status(400).json({ error: `Cannot check-in a booking with status: ${currentStatus}` });
+        }
+        if (newStatus === 'Checked-Out' && currentStatus !== 'Checked-In') {
+             await connection.rollback();
+             // Allow checkout from Confirmed (No-show scenario, but room needs freeing)
+             // Or allow checkout from Checked-Out (idempotent)
+             if (currentStatus !== 'Confirmed' && currentStatus !== 'Checked-Out') {
+                 return res.status(400).json({ error: `Cannot check-out a booking with status: ${currentStatus}` });
+             }
+        }
+        
+        // 3. Update booking status
+        await connection.query('UPDATE bookings SET status = ? WHERE booking_id = ?', [newStatus, id]);
+
+        // 4. Update room status based on the action
+        let roomStatusUpdate = null;
+        if (newStatus === 'Checked-In') {
+            roomStatusUpdate = 'Occupied'; // Should already be Occupied, but enforce it
+        } else if (newStatus === 'Checked-Out') {
+             // For simplicity, we set it back to Available.
+             // A real system might set it to 'Needs Cleaning'.
+            roomStatusUpdate = 'Available'; 
+        }
+
+        if (roomStatusUpdate) {
+            await connection.query('UPDATE rooms SET status = ? WHERE room_id = ?', [roomStatusUpdate, roomId]);
+        }
+
+        // 5. Commit
+        await connection.commit();
+        res.json({ message: `Booking status updated to ${newStatus}` });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Booking status update error:', error);
+        res.status(500).json({ error: 'Database transaction failed' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
 // GET: Get all users (replaces old 'guests' route)
 app.get('/api/users', authenticateToken, authorizeRole('admin'), async (req, res) => {
     try {

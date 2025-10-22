@@ -78,7 +78,7 @@ export default function RoomManagementPage() {
 
     return (
         <div className="room-management-page">
-            <h1>Room Management</h1>
+            <h1 className="page-title">Room Management</h1>
             <p>View all rooms and update their current status.</p>
             
             {/* NEW: Filter Bar */}
@@ -128,7 +128,7 @@ export default function RoomManagementPage() {
                                         <h3>Room {room.room_number}</h3>
                                         <span className="room-type">{room.room_type}</span>
                                     </div>
-                                    <p><strong>Rate:</strong> ${room.rate} / night</p>
+                                    <p><strong>Rate:</strong> ₹{room.rate} / night</p>
                                     <div className="status-control">
                                         <label htmlFor={`status-${room.room_id}`}>Status:</label>
                                         <select
