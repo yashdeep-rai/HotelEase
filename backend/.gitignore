@@ -1,0 +1,25 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Vite
+.vite/
+.next/
+.nuxt/
+dist/
+.output/
+
+# Production
+/build
+
+# Misc
+.DS_Store
+*.pem
+
+# Environment Variables
+.env
+.env*.local
