@@ -1,0 +1,36 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  background-color: #242424;
+  color: white;
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom: 1px solid #3a3a3a;
+  margin-bottom: 2rem;
+}
+
+.navbar a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.navbar a.nav-brand {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #646cff;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.container {
+  width: 100%;
+  padding: 1rem;
+}
