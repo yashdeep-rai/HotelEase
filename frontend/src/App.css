@@ -99,6 +99,41 @@
   display: inline-block;
 }
 
+/* === NEW: User Dropdown Styles === */
+.nav-user-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.nav-user-btn {
+  background: none; /* Make it look less like a button */
+  border: none;
+  color: rgba(255, 255, 255, 0.9); /* Brighter text */
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.25s;
+}
+.nav-user-btn:hover,
+.nav-user-dropdown:focus-within .nav-user-btn { /* Style when open */
+  background-color: #333;
+  color: #fff;
+}
+
+/* User dropdown uses the same .dropdown-content styles as admin */
+
+/* Minor adjustment for admin welcome text */
+.nav-auth span.nav-user {
+    margin-right: 0.5rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
 .nav-admin-btn {
   background-color: #333;
   color: white;

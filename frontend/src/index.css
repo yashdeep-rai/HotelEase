@@ -41,9 +41,9 @@ a {
   text-decoration: none; /* Remove underline by default */
   transition: color 0.25s;
 }
-a:hover {
-  color: #646cff; /* Original purple on hover */
-}
+/* a:hover {
+  color: #646cff; 
+} */
 
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;

@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from 'react'; // 1. Import useEffect, useRef
-import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom'; // 2. Import useLocation
+import { useState, useEffect, useRef } from 'react';
+import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import './App.css';
 
-// 3. Import Icons from react-icons
+// Icons (remain the same)
 import { 
-    FiGrid, FiList, FiSettings, FiUsers, FiLogOut, FiLogIn, FiUserPlus, FiBookOpen, FiCalendar, FiHome 
-} from 'react-icons/fi'; // Example icons from Feather Icons set
+    FiGrid, FiList, FiSettings, FiUsers, FiLogOut, FiLogIn, FiUserPlus, FiBookOpen, FiCalendar, FiHome, FiUser // 1. Added FiUser
+} from 'react-icons/fi';
 
 // Page Imports (remain the same)
 import Homepage from './pages/Homepage';
@@ -26,86 +26,83 @@ import AdminRoute from './components/AdminRoute';
 function App() {
     const { isAuthenticated, isAdmin, logout, user } = useAuth();
     const [isAdminDropdownOpen, setIsAdminDropdownOpen] = useState(false);
+    const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false); // 2. State for user dropdown
     const navigate = useNavigate();
-    const location = useLocation(); // 4. Get current location
-    const dropdownRef = useRef(null); // 5. Ref to detect clicks outside dropdown
+    const location = useLocation();
+    const adminDropdownRef = useRef(null); // Renamed ref for clarity
+    const userDropdownRef = useRef(null);  // 3. Ref for user dropdown
 
-    // 6. Effect to close dropdown on navigation
+    // Effect to close dropdowns on navigation
     useEffect(() => {
-        setIsAdminDropdownOpen(false); // Close dropdown whenever the route changes
+        setIsAdminDropdownOpen(false);
+        setIsUserDropdownOpen(false); // Close user dropdown too
     }, [location]);
 
-    // 7. Effect to handle clicks outside the dropdown
+    // Effect to handle clicks outside BOTH dropdowns
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+            // Close admin dropdown if click is outside
+            if (adminDropdownRef.current && !adminDropdownRef.current.contains(event.target)) {
                 setIsAdminDropdownOpen(false);
             }
+            // Close user dropdown if click is outside
+            if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+                setIsUserDropdownOpen(false);
+            }
         };
-        // Add listener if dropdown is open
-        if (isAdminDropdownOpen) {
+
+        // Add listener if either dropdown is open
+        if (isAdminDropdownOpen || isUserDropdownOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         } else {
-            // Remove listener if dropdown is closed
             document.removeEventListener('mousedown', handleClickOutside);
         }
-        // Cleanup listener on component unmount or when dropdown closes
+        
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isAdminDropdownOpen]);
+    }, [isAdminDropdownOpen, isUserDropdownOpen]); // Depend on both states
 
     const handleLogout = () => {
         logout();
-        setIsAdminDropdownOpen(false); // Ensure dropdown is closed on logout
+        setIsAdminDropdownOpen(false);
+        setIsUserDropdownOpen(false); // Close user dropdown on logout
         navigate('/');
     };
 
-    const toggleAdminDropdown = () => {
-        setIsAdminDropdownOpen(prev => !prev); // Toggle on click
-    };
+    const toggleAdminDropdown = () => setIsAdminDropdownOpen(prev => !prev);
+    const toggleUserDropdown = () => setIsUserDropdownOpen(prev => !prev); // 4. Toggle function for user dropdown
 
     return (
         <>
             <nav className="navbar">
-                {/* Brand now links to Admin Dashboard or Guest Booking page if logged in */}
                 <NavLink 
-                    to={isAuthenticated ? (isAdmin ? "/dashboard" : "/book") : "/"} 
+                    to={isAuthenticated ? (isAdmin ? "/dashboard" : "/") : "/"} // Guest home is now "/"
                     className="nav-brand"
                 >
-                    <FiHome className="nav-icon" /> HotelEase 
+                    <img src='assets/logo.svg'  style={{width:'256px' , height:'40px'}}></img>  
                 </NavLink>
                 
-                {/* --- Main Links (No Home button anymore) --- */}
+                {/* --- Main Links (Now empty for guests, handled by dropdown) --- */}
                 <div className="nav-links">
-                    {/* Only show these if logged in as guest */}
-                    {isAuthenticated && !isAdmin && (
-                        <>
-                            <NavLink to="/book"><FiCalendar className="nav-icon" /> Book a Room</NavLink>
-                            <NavLink to="/my-bookings"><FiBookOpen className="nav-icon" /> My Bookings</NavLink>
-                        </>
-                    )}
+                   {/* This section is intentionally empty now for guests */}
                 </div>
 
-                {/* --- Auth & Admin Links --- */}
+                {/* --- Auth & User/Admin Links --- */}
                 <div className="nav-auth">
                     {isAuthenticated ? (
                         <>
-                            <span className="nav-user">Welcome, {user.first_name}!</span>
-                            
-                            {/* --- Admin Dropdown (Click-based) --- */}
-                            {isAdmin && (
-                                <div className="nav-admin-dropdown" ref={dropdownRef}> {/* Added ref */}
-                                    <button className="nav-admin-btn" onClick={toggleAdminDropdown}>
-                                        <FiSettings className="nav-icon" /> Admin Menu
+                           {/* --- User Dropdown --- */}
+                           {!isAdmin && (
+                                <div className="nav-user-dropdown" ref={userDropdownRef}> {/* 5. User dropdown structure */}
+                                    <button className="nav-user-btn" onClick={toggleUserDropdown}>
+                                        <FiUser className="nav-icon"/> Welcome, {user.first_name}!
                                     </button>
-                                    {isAdminDropdownOpen && (
+                                    {isUserDropdownOpen && (
                                         <div className="dropdown-content">
-                                            <NavLink to="/dashboard"><FiGrid className="nav-icon" /> Dashboard</NavLink>
-                                            <NavLink to="/bookings"><FiList className="nav-icon" /> All Bookings</NavLink>
-                                            <NavLink to="/rooms"><FiSettings className="nav-icon" /> Room Management</NavLink>
-                                            <NavLink to="/users"><FiUsers className="nav-icon" /> User Management</NavLink>
-                                            {/* Logout moved inside */}
+                                            <NavLink to="/book"><FiCalendar className="nav-icon" /> Book a Room</NavLink>
+                                            <NavLink to="/my-bookings"><FiBookOpen className="nav-icon" /> My Bookings</NavLink>
+                                            {/* You could add a "Profile" link here later */}
                                             <button onClick={handleLogout} className="dropdown-logout-btn">
                                                 <FiLogOut className="nav-icon" /> Logout
                                             </button>
@@ -114,14 +111,31 @@ function App() {
                                 </div>
                             )}
 
-                            {/* Show logout button directly for guests */}
-                            {!isAdmin && (
-                                <button onClick={handleLogout} className="nav-logout-btn">
-                                    <FiLogOut className="nav-icon"/> Logout
-                                </button>
+                            {/* --- Admin Dropdown --- */}
+                            {isAdmin && (
+                                <>
+                                    <span className="nav-user">Admin: {user.first_name}</span> {/* Identify admin */}
+                                    <div className="nav-admin-dropdown" ref={adminDropdownRef}>
+                                        <button className="nav-admin-btn" onClick={toggleAdminDropdown}>
+                                            <FiSettings className="nav-icon" /> Admin Menu
+                                        </button>
+                                        {isAdminDropdownOpen && (
+                                            <div className="dropdown-content">
+                                                <NavLink to="/dashboard"><FiGrid className="nav-icon" /> Dashboard</NavLink>
+                                                <NavLink to="/bookings"><FiList className="nav-icon" /> All Bookings</NavLink>
+                                                <NavLink to="/rooms"><FiSettings className="nav-icon" /> Room Management</NavLink>
+                                                <NavLink to="/users"><FiUsers className="nav-icon" /> User Management</NavLink>
+                                                <button onClick={handleLogout} className="dropdown-logout-btn">
+                                                    <FiLogOut className="nav-icon" /> Logout
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
                             )}
                         </>
                     ) : (
+                        // Login/Register links remain the same
                         <>
                             <NavLink to="/login" className="nav-auth-link">
                                 <FiLogIn className="nav-icon"/> Login
@@ -135,8 +149,8 @@ function App() {
             </nav>
             
             <main className="container">
-                <Routes>
-                    {/* Routes remain exactly the same */}
+                 {/* Routes remain exactly the same */}
+                 <Routes>
                     <Route path="/" element={<Homepage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
