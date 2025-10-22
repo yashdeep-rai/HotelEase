@@ -1,11 +1,19 @@
+/* --- NEW: Modern CSS Reset --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  /* NEW: Set font to Inter, with fallbacks */
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.6;
   font-weight: 400;
 
-  color-scheme: light dark;
+  color-scheme: dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: #1a1a1a; /* Darker background */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -14,19 +22,14 @@
 }
 
 body {
-  margin: 0;
-  display: flex;
-  justify-content: center;
   min-width: 320px;
   min-height: 100vh;
 }
 
 #root {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1400px; /* Widen max-width for a more 'dashboard' feel */
   margin: 0 auto;
-  padding: 0 2rem;
-  text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -34,46 +37,96 @@ body {
 
 a {
   font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+  color: #808cff; /* Brighter purple */
+  text-decoration: none; /* Remove underline by default */
+  transition: color 0.25s;
 }
 a:hover {
-  color: #535bf2;
+  color: #646cff; /* Original purple on hover */
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  color: #ffffff; /* Pure white for headings */
+  line-height: 1.2;
 }
 
-button {
+h1 { font-size: 2.8em; }
+h2 { font-size: 2.2em; }
+h3 { font-size: 1.5em; }
+
+p {
+  color: rgba(255, 255, 255, 0.7); /* Slightly lighter body text */
+}
+
+button, .btn {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #333; /* Darker button */
+  color: #fff;
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: all 0.25s;
 }
-button:hover {
+button:hover, .btn:hover {
   border-color: #646cff;
+  background-color: #2a2a2a;
 }
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* --- NEW: Global Form Styles --- */
+input, select {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.75em 1em;
+  border-radius: 8px;
+  border: 1px solid #3a3a3a;
+  background-color: #242424;
+  color: rgba(255, 255, 255, 0.87);
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+input:focus, select:focus {
+  border-color: #646cff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.3);
+}
+
+/* --- NEW: Utility Classes --- */
+.container {
+  width: 100%;
+  padding: 1.5rem 2rem; /* Consistent padding */
+  text-align: center;
+}
+
+.error-message {
+  color: #ff8a8a; /* Brighter red */
+  font-weight: 500;
+  background-color: rgba(255, 107, 107, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ff6b6b;
+  text-align: center;
+}
+
+/* Base card style */
+.card {
+    background-color: #242424; /* Darker card */
+    border: 1px solid #3a3a3a;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: left;
+    transition: all 0.25s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    border-color: #4a4a4a;
 }

@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import pool from './db.js';
+import { authRoutes } from './routes/auth.js'; // Import auth routes
+import { authenticateToken, authorizeRole } from './middleware/auth.js'; // Import middleware
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -9,10 +11,17 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// === API ROUTES ===
+// === PUBLIC AUTH ROUTES ===
+// Handles /api/auth/register and /api/auth/login
+app.use('/api/auth', authRoutes);
+
+// === PROTECTED ROUTES ===
+// All routes below this require a valid token
+
+// --- Guest & Admin Routes ---
 
 // GET: Find available rooms
-app.get('/api/rooms/available', async (req, res) => {
+app.get('/api/rooms/available', authenticateToken, async (req, res) => {
   const { check_in, check_out } = req.query;
 
   if (!check_in || !check_out) {
@@ -39,63 +48,21 @@ app.get('/api/rooms/available', async (req, res) => {
   }
 });
 
-// GET: Get all guests
-app.get('/api/guests', async (req, res) => {
-    try {
-        const [rows] = await pool.query('SELECT * FROM guests');
-        res.json(rows);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Database query failed' });
-    }
-});
+// POST: Create a new booking (for the logged-in user)
+app.post('/api/bookings', authenticateToken, async (req, res) => {
+  const { room_id, check_in_date, check_out_date, total_amount } = req.body;
+  const user_id = req.user.id; // Get user ID from the authenticated token
 
-
-
-// GET: Get all bookings with guest and room details
-app.get('/api/bookings', async (req, res) => {
-  try {
-    const query = `
-      SELECT
-        b.booking_id,
-        b.check_in_date,
-        b.check_out_date,
-        b.total_amount,
-        b.status,
-        g.first_name,
-        g.last_name,
-        g.email,
-        r.room_number,
-        r.room_type
-      FROM bookings b
-      JOIN guests g ON b.guest_id = g.guest_id
-      JOIN rooms r ON b.room_id = r.room_id
-      ORDER BY b.check_in_date DESC;
-    `;
-    const [rows] = await pool.query(query);
-    res.json(rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Database query failed' });
-  }
-});
-
-
-
-// POST: Create a new booking
-app.post('/api/bookings', async (req, res) => {
-  const { guest_id, room_id, check_in_date, check_out_date, total_amount } = req.body;
-
-  if (!guest_id || !room_id || !check_in_date || !check_out_date) {
+  if (!user_id || !room_id || !check_in_date || !check_out_date) {
     return res.status(400).json({ error: 'Missing required booking information' });
   }
 
   try {
     const query = `
-      INSERT INTO bookings (guest_id, room_id, check_in_date, check_out_date, total_amount, status)
+      INSERT INTO bookings (user_id, room_id, check_in_date, check_out_date, total_amount, status)
       VALUES (?, ?, ?, ?, ?, 'Confirmed')
     `;
-    const [result] = await pool.query(query, [guest_id, room_id, check_in_date, check_out_date, total_amount]);
+    const [result] = await pool.query(query, [user_id, room_id, check_in_date, check_out_date, total_amount]);
     
     // Update room status
     await pool.query("UPDATE rooms SET status = 'Occupied' WHERE room_id = ?", [room_id]);
@@ -107,53 +74,35 @@ app.post('/api/bookings', async (req, res) => {
   }
 });
 
-
-// POST: Create a new guest
-app.post('/api/guests', async (req, res) => {
-  const { first_name, last_name, email, phone } = req.body;
-
-  if (!first_name || !last_name || !email) {
-    return res.status(400).json({ error: 'First name, last name, and email are required' });
-  }
-
-  try {
-    const query = 'INSERT INTO guests (first_name, last_name, email, phone) VALUES (?, ?, ?, ?)';
-    const [result] = await pool.query(query, [first_name, last_name, email, phone]);
-    
-    // Respond with the newly created guest ID
-    res.status(201).json({ message: 'Guest created!', guest_id: result.insertId });
-  
-  } catch (error) {
-    console.error(error);
-    // Handle specific errors, like duplicate email
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ error: 'A guest with this email already exists.' });
-    }
-    res.status(500).json({ error: 'Database insert failed' });
-  }
-});
-
 // DELETE: Cancel/Delete a booking
-app.delete('/api/bookings/:id', async (req, res) => {
+// (This route is accessible to all authenticated users,
+// but you could add logic to check if req.user.id === booking.user_id)
+app.delete('/api/bookings/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   let connection; // Define connection outside the try block
 
   try {
-    // 1. Get connection (NOW INSIDE THE TRY BLOCK)
+    // 1. Get connection
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    // 2. Get the booking details (room_id and status) BEFORE deleting
-    const [rows] = await connection.query('SELECT room_id, status FROM bookings WHERE booking_id = ?', [id]);
+    // 2. Get the booking details
+    const [rows] = await connection.query('SELECT user_id, room_id, status FROM bookings WHERE booking_id = ?', [id]);
     
     if (rows.length === 0) {
       await connection.rollback();
-      // Need to release connection before returning
       connection.release(); 
       return res.status(404).json({ error: 'Booking not found' });
     }
 
     const { room_id, status } = rows[0];
+
+    // Optional: Check if user is admin OR the owner of the booking
+    // if (req.user.role !== 'admin' && req.user.id !== rows[0].user_id) {
+    //   await connection.rollback();
+    //   connection.release();
+    //   return res.status(403).json({ error: 'Access denied: You do not own this booking' });
+    // }
 
     // 3. Delete the booking
     await connection.query('DELETE FROM bookings WHERE booking_id = ?', [id]);
@@ -177,6 +126,84 @@ app.delete('/api/bookings/:id', async (req, res) => {
     // 7. ALWAYS release the connection
     if (connection) connection.release(); 
   }
+});
+
+
+// --- ADMIN-ONLY ROUTES ---
+// All routes below require both a valid token AND an 'admin' role
+
+// GET: Get all bookings with details
+app.get('/api/bookings', authenticateToken, authorizeRole('admin'), async (req, res) => {
+  try {
+    const query = `
+      SELECT
+        b.booking_id,
+        b.check_in_date,
+        b.check_out_date,
+        b.total_amount,
+        b.status,
+        u.first_name,
+        u.last_name,
+        u.email,
+        r.room_number,
+        r.room_type
+      FROM bookings b
+      JOIN users u ON b.user_id = u.user_id
+      JOIN rooms r ON b.room_id = r.room_id
+      ORDER BY b.check_in_date DESC;
+    `;
+    const [rows] = await pool.query(query);
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Database query failed' });
+  }
+});
+
+// GET: Get all users (replaces old 'guests' route)
+app.get('/api/users', authenticateToken, authorizeRole('admin'), async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT user_id, first_name, last_name, email, phone, role FROM users');
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: 'Database query failed' });
+    }
+});
+
+// GET: Get ALL rooms (not just available)
+app.get('/api/rooms', authenticateToken, authorizeRole('admin'), async (req, res) => {
+    try {
+        const [rows] = await pool.query('SELECT * FROM rooms ORDER BY room_number');
+        res.json(rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Database query failed' });
+    }
+});
+
+// PUT: Update a room's status
+app.put('/api/rooms/:id/status', authenticateToken, authorizeRole('admin'), async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status || !['Available', 'Occupied', 'Maintenance'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid or missing status' });
+    }
+
+    try {
+        const query = 'UPDATE rooms SET status = ? WHERE room_id = ?';
+        const [result] = await pool.query(query, [status, id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Room not found' });
+        }
+
+        res.json({ message: 'Room status updated successfully' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Database update failed' });
+    }
 });
 
 // Start the server

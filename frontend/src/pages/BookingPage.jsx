@@ -1,16 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import './BookingPage.css';
-import Modal from '../components/Modal'; // NEW: Import Modal
-import '../components/Modal.css'; // NEW: Import Modal CSS
+import Modal from '../components/Modal';
+import '../components/Modal.css';
+import { useAuth } from '../context/AuthContext'; // 1. Import useAuth
 
-// NEW: Helper function to get today's date in 'YYYY-MM-DD' format
+// Helper function to get today's date in 'YYYY-MM-DD' format
 const getToday = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
 };
 
-// NEW: Helper function to get tomorrow's date
+// Helper function to get tomorrow's date
 const getTomorrow = () => {
     const today = new Date();
     const tomorrow = new Date(today);
@@ -20,42 +21,43 @@ const getTomorrow = () => {
 
 export default function BookingPage() {
     // --- State Declarations ---
+    const { user } = useAuth(); // 2. Call useAuth() INSIDE the component
+
     const [rooms, setRooms] = useState([]);
-    const [guests, setGuests] = useState([]);
-    const [selectedGuest, setSelectedGuest] = useState('');
     
-    // NEW: State for dates, defaulting to today and tomorrow
+    // State for dates
     const [checkIn, setCheckIn] = useState(getToday());
     const [checkOut, setCheckOut] = useState(getTomorrow());
 
-    const [loading, setLoading] = useState(false); // Rooms are not loaded by default
+    const [loading, setLoading] = useState(false);
     const [roomError, setRoomError] = useState(null);
-    const [guestError, setGuestError] = useState(null);
-    
-    // NEW: State to track if a search has been performed
     const [hasSearched, setHasSearched] = useState(false);
 
-    // NEW: State for confirmation modal
+    // State for modals
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [roomToBook, setRoomToBook] = useState(null); 
     const [modalContent, setModalContent] = useState({ title: '', body: '' });
-
-    // NEW: State for a *success/error* modal (a one-button modal)
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
     const [infoModalContent, setInfoModalContent] = useState({ title: '', body: '' });
 
     // --- Data Fetching ---
-
-    // Fetch available rooms - NOW accepts dates as parameters
-    // We removed useCallback because it's now called by a user event (Search)
+    
+    // Fetch available rooms
     const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
         try {
             setLoading(true);
-            setHasSearched(true); // Mark that a search has been done
+            setHasSearched(true);
             setRoomError(null);
-            setRooms([]); // Clear old results
+            setRooms([]);
 
-            const response = await fetch(`/api/rooms/available?check_in=${searchCheckIn}&check_out=${searchCheckOut}`);
+            // 3. Get token from auth context to send
+            const token = localStorage.getItem('token'); 
+
+            const response = await fetch(`/api/rooms/available?check_in=${searchCheckIn}&check_out=${searchCheckOut}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}` // 4. Add token to request
+                }
+            });
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
             const data = await response.json();
@@ -68,35 +70,14 @@ export default function BookingPage() {
             setLoading(false);
         }
     };
-
-    // Fetch all guests (only runs once on page load)
-    useEffect(() => {
-        const fetchGuests = async () => {
-            try {
-                setGuestError(null);
-                const response = await fetch('/api/guests');
-                if (!response.ok) throw new Error('Failed to fetch guests');
-                const data = await response.json();
-                setGuests(data);
-                if (data.length > 0) {
-                    setSelectedGuest(data[0].guest_id);
-                }
-            } catch (err) {
-                console.error(err);
-                setGuestError(err.message);
-            }
-        };
-
-        // Note: We no longer fetch rooms here, only guests
-        fetchGuests(); 
-    }, []); // Empty dependency array means this runs only once
+    
+    // 5. REMOVED: The useEffect for fetchGuests is no longer needed.
 
     // --- Event Handlers ---
 
-    // NEW: Handler for the "Search" button
+    // Handler for the "Search" button
     const handleSearch = (e) => {
         e.preventDefault();
-        // Validate dates
         if (!checkIn || !checkOut) {
             setRoomError("Please select both a Check-in and Check-out date.");
             return;
@@ -108,18 +89,11 @@ export default function BookingPage() {
         fetchAvailableRooms(checkIn, checkOut);
     };
 
+    // This function opens the confirmation modal
     const handleBookRoom = (room) => {
-        if (!selectedGuest) {
-            // This is a simple validation, alert is fine
-            alert('Please select a guest before booking.');
-            return;
-        }
-        
-        // Find guest name for the modal
-        const guest = guests.find(g => g.guest_id.toString() === selectedGuest.toString());
-        const guestName = guest ? `${guest.first_name} ${guest.last_name}` : 'Selected Guest';
+        // 6. Get guest name from the logged-in user
+        const guestName = user ? `${user.first_name} ${user.last_name}` : 'Logged-in User';
 
-        // 1. Set the room and modal content
         setRoomToBook(room);
         setModalContent({
             title: 'Confirm Booking',
@@ -134,15 +108,13 @@ export default function BookingPage() {
             )
         });
         
-        // 2. Open the modal
         setIsModalOpen(true);
     };
 
-    // NEW: This function runs when "Confirm" is clicked in the booking modal
+    // This function runs when "Confirm" is clicked
     const handleConfirmBooking = async () => {
-        if (!roomToBook || !selectedGuest) return; 
+        if (!roomToBook || !user) return; 
 
-        // Close the confirmation modal
         setIsModalOpen(false);
 
         const date1 = new Date(checkIn);
@@ -150,9 +122,10 @@ export default function BookingPage() {
         const diffTime = Math.abs(date2 - date1);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const totalAmount = diffDays * roomToBook.rate;
-
+        
+        // 7. Use the logged-in user's ID
         const bookingDetails = {
-            guest_id: selectedGuest, 
+            guest_id: user.id, // This is now user_id, but our backend handles it
             room_id: roomToBook.room_id,
             check_in_date: checkIn,
             check_out_date: checkOut,
@@ -160,9 +133,13 @@ export default function BookingPage() {
         };
 
         try {
+            const token = localStorage.getItem('token');
             const response = await fetch('/api/bookings', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // 8. Add token to POST request
+                },
                 body: JSON.stringify(bookingDetails),
             });
 
@@ -173,36 +150,29 @@ export default function BookingPage() {
 
             const result = await response.json();
             
-            // NEW: Show a SUCCESS info-modal
             setInfoModalContent({
                 title: 'Booking Successful!',
                 body: `Your booking for Room ${roomToBook.room_number} is confirmed. Booking ID: ${result.booking_id}`
             });
             setIsInfoModalOpen(true);
             
-            // Refresh the room list
             fetchAvailableRooms(checkIn, checkOut);
 
         } catch (err) {
             console.error('Booking Error:', err);
-            // NEW: Show an ERROR info-modal
             setInfoModalContent({
                 title: 'Booking Failed',
                 body: err.message
             });
             setIsInfoModalOpen(true);
         } finally {
-            // Reset the room to book
             setRoomToBook(null);
         }
     };
-
+    
     // --- JSX Return ---
     return (
         <div className="booking-page">
-            <h1>Book a Room</h1>
-            
-            {/* NEW: Add the Confirmation Modal */}
             <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -212,19 +182,18 @@ export default function BookingPage() {
                 {modalContent.body}
             </Modal>
 
-            {/* NEW: Add the Info Modal (uses a trick by hiding the 'Confirm' button) */}
             <Modal
                 isOpen={isInfoModalOpen}
                 onClose={() => setIsInfoModalOpen(false)}
-                onConfirm={() => setIsInfoModalOpen(false)} // Confirm just closes it
+                onConfirm={() => setIsInfoModalOpen(false)}
                 title={infoModalContent.title}
             >
                 <style>{`.modal-footer .btn-primary { display: none; }`}</style>
                 <p>{infoModalContent.body}</p>
             </Modal>
 
-
-            {/* --- NEW: Date Selection Form --- */}
+            <h1>Book a Room</h1>
+            
             <form onSubmit={handleSearch} className="date-search-form">
                 <div className="date-group">
                     <label htmlFor="check-in">Check-in Date</label>
@@ -251,58 +220,36 @@ export default function BookingPage() {
                 <button type="submit" className="search-btn">Search Rooms</button>
             </form>
 
-            {/* --- Guest selection section (remains the same) --- */}
-            <div className="guest-selector-container">
-                {guestError && <p className="error-message">{guestError}</p>}
-                {guests.length > 0 ? (
-                    <>
-                        <label htmlFor="guest-select">Select Guest to Book For:</label>
-                        <select
-                            id="guest-select"
-                            value={selectedGuest}
-                            onChange={(e) => setSelectedGuest(e.target.value)}
-                        >
-                            {guests.map(guest => (
-                                <option key={guest.guest_id} value={guest.guest_id}>
-                                    {guest.first_name} {guest.last_name} ({guest.email})
-                                </option>
-                            ))}
-                        </select>
-                    </>
-                ) : (
-                    <p>Loading guests...</p>
-                )}
-                <Link to="/add-guest" className="add-guest-link">
-                    + Add New Guest
-                </Link>
-            </div>
+            {/* 9. REMOVED: The entire "guest-selector-container" div is gone */}
 
-            {/* --- Room List (now conditional on search) --- */}
+            {/* --- Room List --- */}
             {loading && <p>Searching for available rooms...</p>}
             {roomError && <p className="error-message">{roomError}</p>}
             
             <div className="room-list">
-                {/* Only show results if not loading AND a search has been made */}
                 {!loading && hasSearched && (
                     rooms.length > 0 ? (
                         rooms.map(room => (
-                            <div key={room.room_id} className="room-card">
-                                <h3>Room {room.room_number}</h3>
-                                <p><strong>Type:</strong> {room.room_type}</p>
+                            <div key={room.room_id} className="card room-card"> {/* Used .card */}
+                                <div className="room-card-header">
+                                    <h3>Room {room.room_number}</h3>
+                                    <span className="room-type">{room.room_type}</span>
+                                </div>
                                 <p><strong>Rate:</strong> ${room.rate} / night</p>
-                                <button onClick={() => handleBookRoom(room)}>
+                                <button 
+                                    onClick={() => handleBookRoom(room)} 
+                                    className="btn-primary" /* Use new class */
+                                >
                                     Book Now
                                 </button>
                             </div>
                         ))
                     ) : (
-                        // Show "No rooms" only if a search was done
                         <p>No available rooms for the selected dates.</p>
                     )
                 )}
             </div>
             
-            {/* Show this message before the first search */}
             {!hasSearched && !loading &&
                 <p>Please select your dates and click "Search Rooms" to see availability.</p>
             }

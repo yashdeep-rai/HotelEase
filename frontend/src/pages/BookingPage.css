@@ -1,117 +1,22 @@
 .booking-page {
-  width: 100%;
+    width: 100%;
 }
 
 .booking-page p {
-  font-size: 1.1rem;
-}
-
-.error-message {
-  color: #ff6b6b;
-  font-weight: bold;
-  background-color: #4d2a2a;
-  padding: 1rem;
-  border-radius: 8px;
-}
-
-.room-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin-top: 2rem;
-  text-align: left;
-}
-
-.room-card {
-  border: 1px solid #3a3a3a;
-  border-radius: 8px;
-  padding: 1.5rem;
-  background-color: #1a1a1a;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.room-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.room-card h3 {
-  margin-top: 0;
-  color: #646cff;
-  font-size: 1.5rem;
-  border-bottom: 1px solid #3a3a3a;
-  padding-bottom: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.room-card p {
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
-}
-
-.room-card button {
-  margin-top: 1rem;
-  width: 100%;
-}
-
-/* --- Add these new styles to BookingPage.css --- */
-
-.guest-selector-container {
-    background-color: #1a1a1a;
-    border: 1px solid #3a3a3a;
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 1rem;
-    justify-content: space-between;
-}
-
-.guest-selector-container label {
-    font-weight: 500;
     font-size: 1.1rem;
-    flex-basis: 100%;
+    color: rgba(255, 255, 255, 0.7);
 }
 
-.guest-selector-container select {
-    font-size: 1rem;
-    padding: 0.75em 1em;
-    border-radius: 8px;
-    border: 1px solid #3a3a3a;
-    background-color: #242424;
-    color: rgba(255, 255, 255, 0.87);
-    flex-grow: 1;
-    min-width: 200px;
-}
-
-.add-guest-link {
-    font-weight: 500;
-    color: #646cff;
-    text-decoration: none;
-    padding: 0.75em 1em;
-    border: 1px solid #646cff;
-    border-radius: 8px;
-    transition: all 0.25s;
-    text-align: center;
-}
-
-.add-guest-link:hover {
-    background-color: rgba(100, 108, 255, 0.1);
-}
-
-/* --- Add these new styles to BookingPage.css --- */
-
+/* --- Date Search Form --- */
 .date-search-form {
     display: flex;
     flex-wrap: wrap;
     gap: 1.5rem;
     align-items: flex-end;
-    background-color: #1a1a1a;
+    background-color: #242424;
     border: 1px solid #3a3a3a;
-    border-radius: 8px;
-    padding: 1.5rem;
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
     margin-bottom: 2rem;
 }
 
@@ -120,38 +25,91 @@
     flex-direction: column;
     gap: 0.5rem;
     flex-grow: 1;
+    min-width: 200px;
 }
 
 .date-group label {
     font-weight: 500;
     font-size: 1rem;
     text-align: left;
+    color: #fff;
 }
 
 .date-group input[type="date"] {
-    font-size: 1rem;
-    padding: 0.75em 1em;
-    border-radius: 8px;
-    border: 1px solid #3a3a3a;
-    background-color: #242424;
-    color: rgba(255, 255, 255, 0.87);
-    color-scheme: dark; /* Ensures the date picker popup is dark */
+    color-scheme: dark;
 }
 
 .search-btn {
     font-size: 1.1rem;
-    font-weight: bold;
+    font-weight: 600;
     background-color: #646cff;
     color: white;
     padding: 0.75em 1.5em;
     border-radius: 8px;
-    text-decoration: none;
-    transition: background-color 0.25s;
     border: none;
     cursor: pointer;
     height: fit-content;
 }
-
 .search-btn:hover {
     background-color: #535bf2;
+}
+
+
+/* --- Room List --- */
+.room-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+    text-align: left;
+}
+
+/* NEW: Using .card base class */
+.room-card {
+    /* Uses .card from index.css */
+    display: flex;
+    flex-direction: column;
+}
+
+.room-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #3a3a3a;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.room-card-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #fff;
+}
+
+.room-type {
+    font-size: 0.9rem;
+    font-weight: 500;
+    background-color: #333;
+    padding: 0.3em 0.6em;
+    border-radius: 4px;
+    color: #ccc;
+}
+
+.room-card p {
+    margin-bottom: 1rem;
+    flex-grow: 1; /* Pushes button to bottom */
+}
+
+/* Button Styling */
+.btn-primary {
+    width: 100%;
+    font-size: 1rem;
+    font-weight: 600;
+    background-color: #646cff;
+    color: white;
+    border: none;
+}
+.btn-primary:hover {
+    background-color: #535bf2;
+    border-color: #535bf2;
 }

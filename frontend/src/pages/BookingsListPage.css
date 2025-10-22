@@ -4,45 +4,57 @@
 
 .bookings-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: collapse; /* Cleaner look */
     margin-top: 2rem;
-    font-size: 0.95rem;
+    font-size: 1rem; /* Slightly larger font */
+    background-color: #242424;
+    border-radius: 8px;
+    overflow: hidden; /* For border-radius */
+    border: 1px solid #3a3a3a;
 }
 
 .bookings-table th,
 .bookings-table td {
-    padding: 12px 15px;
-    border: 1px solid #3a3a3a;
+    padding: 16px 20px; /* More padding */
     text-align: left;
+    border-bottom: 1px solid #3a3a3a; /* Row separators */
 }
 
 .bookings-table th {
     background-color: #1a1a1a;
-    color: #646cff;
+    color: #fff;
     font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.bookings-table tbody tr:nth-child(even) {
-    background-color: #2a2a2a;
+/* Remove border from last row */
+.bookings-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.bookings-table tbody tr {
+    transition: background-color 0.25s;
 }
 
 .bookings-table tbody tr:hover {
-    background-color: #313131;
+    background-color: #2a2a2a;
 }
 
 .bookings-table td {
-    color: rgba(255, 255, 255, 0.87);
+    color: rgba(255, 255, 255, 0.8);
 }
 
-.bookings-table td:first-child,
-.bookings-table td:last-child {
+.bookings-table td:first-child {
     font-weight: bold;
+    color: #fff;
 }
 
-/* --- Styles for the new button --- */
+/* --- Action Button Styles --- */
 .action-btn {
     font-size: 0.9rem;
-    padding: 0.4em 0.8em;
+    padding: 0.5em 1em;
     border-radius: 6px;
     cursor: pointer;
     border: none;
@@ -51,16 +63,12 @@
 }
 
 .cancel-btn {
-    background-color: #a13434; /* A dark red */
-    color: white;
+    background-color: rgba(255, 107, 107, 0.1);
+    color: #ff8a8a;
+    border: 1px solid #ff6b6b;
 }
 
 .cancel-btn:hover {
-    background-color: #c94040;
-}
-
-/* --- Error message style --- */
-.error-message {
-  color: #ff6b6b;
-  font-weight: bold;
+    background-color: #ff6b6b;
+    color: #fff;
 }
