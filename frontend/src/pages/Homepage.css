@@ -1,34 +1,93 @@
-.homepage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  margin-top: 4rem;
+.homepage-container {
+    width: 100%;
 }
 
-.homepage h1 {
-  margin: 0;
+/* --- Hero Section Styles --- */
+.hero-section {
+    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80');
+    background-size: cover;
+    background-position: center;
+    padding: 6rem 2rem;
+    border-radius: 12px;
+    text-align: center;
+    color: white;
+    margin-top: -1rem; /* Aligns better with the nav bar */
 }
 
-.homepage p {
-  font-size: 1.2rem;
-  max-width: 600px;
-  color: rgba(255, 255, 255, 0.7);
+.hero-content {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.hero-section h1 {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+}
+
+.hero-subtitle {
+    font-size: 1.3rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 2.5rem;
 }
 
 .cta-button {
-  font-size: 1.1rem;
-  font-weight: bold;
-  background-color: #646cff;
-  color: white;
-  padding: 0.8em 1.5em;
-  border-radius: 8px;
-  text-decoration: none;
-  transition: background-color 0.25s;
+    font-size: 1.2rem;
+    font-weight: bold;
+    background-color: #646cff;
+    color: white;
+    padding: 0.8em 1.8em;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.25s;
+    border: 2px solid #646cff;
 }
 
 .cta-button:hover {
-  background-color: #535bf2;
-  color: white;
+    background-color: #535bf2;
+    border-color: #535bf2;
+    transform: translateY(-3px);
+}
+
+/* --- Features Section Styles --- */
+.features-section {
+    margin-top: 4rem;
+    text-align: center;
+}
+
+.features-section h2 {
+    font-size: 2.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.feature-card {
+    background-color: #1a1a1a;
+    padding: 2rem;
+    border-radius: 8px;
+    border: 1px solid #3a3a3a;
+    text-align: left;
+    transition: all 0.25s;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+    border-color: #646cff;
+}
+
+.feature-card h3 {
+    font-size: 1.5rem;
+    color: #646cff;
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.feature-card p {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
 }

@@ -38,3 +38,29 @@
 .bookings-table td:last-child {
     font-weight: bold;
 }
+
+/* --- Styles for the new button --- */
+.action-btn {
+    font-size: 0.9rem;
+    padding: 0.4em 0.8em;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    font-weight: 500;
+    transition: all 0.25s;
+}
+
+.cancel-btn {
+    background-color: #a13434; /* A dark red */
+    color: white;
+}
+
+.cancel-btn:hover {
+    background-color: #c94040;
+}
+
+/* --- Error message style --- */
+.error-message {
+  color: #ff6b6b;
+  font-weight: bold;
+}

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import './BookingPage.css';
+import Modal from '../components/Modal'; // NEW: Import Modal
+import '../components/Modal.css'; // NEW: Import Modal CSS
 
 // NEW: Helper function to get today's date in 'YYYY-MM-DD' format
 const getToday = () => {
@@ -32,6 +34,15 @@ export default function BookingPage() {
     
     // NEW: State to track if a search has been performed
     const [hasSearched, setHasSearched] = useState(false);
+
+    // NEW: State for confirmation modal
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [roomToBook, setRoomToBook] = useState(null); 
+    const [modalContent, setModalContent] = useState({ title: '', body: '' });
+
+    // NEW: State for a *success/error* modal (a one-button modal)
+    const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+    const [infoModalContent, setInfoModalContent] = useState({ title: '', body: '' });
 
     // --- Data Fetching ---
 
@@ -97,25 +108,54 @@ export default function BookingPage() {
         fetchAvailableRooms(checkIn, checkOut);
     };
 
-    // Handler for the "Book Now" button
-    const handleBookRoom = async (room) => {
+    const handleBookRoom = (room) => {
         if (!selectedGuest) {
+            // This is a simple validation, alert is fine
             alert('Please select a guest before booking.');
             return;
         }
+        
+        // Find guest name for the modal
+        const guest = guests.find(g => g.guest_id.toString() === selectedGuest.toString());
+        const guestName = guest ? `${guest.first_name} ${guest.last_name}` : 'Selected Guest';
 
-        // Use dates from state
+        // 1. Set the room and modal content
+        setRoomToBook(room);
+        setModalContent({
+            title: 'Confirm Booking',
+            body: (
+                <>
+                    <p>Are you sure you want to book this room?</p>
+                    <p><strong>Guest:</strong> {guestName}</p>
+                    <p><strong>Room:</strong> {room.room_number} ({room.room_type})</p>
+                    <p><strong>Check-in:</strong> {checkIn}</p>
+                    <p><strong>Check-out:</strong> {checkOut}</p>
+                </>
+            )
+        });
+        
+        // 2. Open the modal
+        setIsModalOpen(true);
+    };
+
+    // NEW: This function runs when "Confirm" is clicked in the booking modal
+    const handleConfirmBooking = async () => {
+        if (!roomToBook || !selectedGuest) return; 
+
+        // Close the confirmation modal
+        setIsModalOpen(false);
+
         const date1 = new Date(checkIn);
         const date2 = new Date(checkOut);
         const diffTime = Math.abs(date2 - date1);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        const totalAmount = diffDays * room.rate;
+        const totalAmount = diffDays * roomToBook.rate;
 
         const bookingDetails = {
             guest_id: selectedGuest, 
-            room_id: room.room_id,
-            check_in_date: checkIn,   // Use date from state
-            check_out_date: checkOut, // Use date from state
+            room_id: roomToBook.room_id,
+            check_in_date: checkIn,
+            check_out_date: checkOut,
             total_amount: totalAmount
         };
 
@@ -132,14 +172,28 @@ export default function BookingPage() {
             }
 
             const result = await response.json();
-            alert(`Booking successful! Your Booking ID is: ${result.booking_id}`);
             
-            // Refresh the room list for the same dates
+            // NEW: Show a SUCCESS info-modal
+            setInfoModalContent({
+                title: 'Booking Successful!',
+                body: `Your booking for Room ${roomToBook.room_number} is confirmed. Booking ID: ${result.booking_id}`
+            });
+            setIsInfoModalOpen(true);
+            
+            // Refresh the room list
             fetchAvailableRooms(checkIn, checkOut);
 
         } catch (err) {
             console.error('Booking Error:', err);
-            alert(`Booking failed: ${err.message}`);
+            // NEW: Show an ERROR info-modal
+            setInfoModalContent({
+                title: 'Booking Failed',
+                body: err.message
+            });
+            setIsInfoModalOpen(true);
+        } finally {
+            // Reset the room to book
+            setRoomToBook(null);
         }
     };
 
@@ -148,6 +202,28 @@ export default function BookingPage() {
         <div className="booking-page">
             <h1>Book a Room</h1>
             
+            {/* NEW: Add the Confirmation Modal */}
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onConfirm={handleConfirmBooking}
+                title={modalContent.title}
+            >
+                {modalContent.body}
+            </Modal>
+
+            {/* NEW: Add the Info Modal (uses a trick by hiding the 'Confirm' button) */}
+            <Modal
+                isOpen={isInfoModalOpen}
+                onClose={() => setIsInfoModalOpen(false)}
+                onConfirm={() => setIsInfoModalOpen(false)} // Confirm just closes it
+                title={infoModalContent.title}
+            >
+                <style>{`.modal-footer .btn-primary { display: none; }`}</style>
+                <p>{infoModalContent.body}</p>
+            </Modal>
+
+
             {/* --- NEW: Date Selection Form --- */}
             <form onSubmit={handleSearch} className="date-search-form">
                 <div className="date-group">

@@ -133,6 +133,52 @@ app.post('/api/guests', async (req, res) => {
   }
 });
 
+// DELETE: Cancel/Delete a booking
+app.delete('/api/bookings/:id', async (req, res) => {
+  const { id } = req.params;
+  let connection; // Define connection outside the try block
+
+  try {
+    // 1. Get connection (NOW INSIDE THE TRY BLOCK)
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // 2. Get the booking details (room_id and status) BEFORE deleting
+    const [rows] = await connection.query('SELECT room_id, status FROM bookings WHERE booking_id = ?', [id]);
+    
+    if (rows.length === 0) {
+      await connection.rollback();
+      // Need to release connection before returning
+      connection.release(); 
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const { room_id, status } = rows[0];
+
+    // 3. Delete the booking
+    await connection.query('DELETE FROM bookings WHERE booking_id = ?', [id]);
+
+    // 4. If the booking was active, set the room back to 'Available'
+    if (status === 'Confirmed' || status === 'Checked-In') {
+        await connection.query("UPDATE rooms SET status = 'Available' WHERE room_id = ?", [room_id]);
+    }
+
+    // 5. If all queries succeeded, commit the changes
+    await connection.commit();
+    res.json({ message: 'Booking cancelled successfully' });
+
+  } catch (error) {
+    // 6. If ANYTHING fails, roll back and send a JSON error
+    if (connection) await connection.rollback(); 
+    console.error(error);
+    res.status(500).json({ error: 'Database transaction failed' });
+  
+  } finally {
+    // 7. ALWAYS release the connection
+    if (connection) connection.release(); 
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
