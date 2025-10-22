@@ -72,3 +72,13 @@
     background-color: #ff6b6b;
     color: #fff;
 }
+
+/* Add to BookingsListPage.css */
+.action-btn {
+    display: inline-flex; /* Align icon and text */
+    align-items: center;
+    gap: 0.4rem;
+}
+.btn-icon {
+    font-size: 1.1em;
+}

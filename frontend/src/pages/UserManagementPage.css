@@ -1,0 +1,26 @@
+.role-select {
+    font-size: 1rem;
+    padding: 0.5em 0.75em;
+    border-radius: 8px;
+    border: 1px solid #3a3a3a;
+    background-color: #242424;
+    color: rgba(255, 255, 255, 0.87);
+}
+
+.role-select:disabled {
+    background-color: #333;
+    color: #888;
+    cursor: not-allowed;
+}
+
+.action-btn:disabled {
+    background-color: #555;
+    color: #999;
+    cursor: not-allowed;
+    border: none;
+}
+
+.action-btn:disabled:hover {
+    background-color: #555;
+    color: #999;
+}

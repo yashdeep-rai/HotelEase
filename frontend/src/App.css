@@ -2,82 +2,197 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
-  background-color: rgba(26, 26, 26, 0.8); /* Dark, semi-transparent */
-  backdrop-filter: blur(10px); /* Frosted glass effect */
+  padding: 0.8rem 2rem; /* Slightly reduced padding */
+  background-color: rgba(26, 26, 26, 0.85); /* Slightly less transparent */
+  backdrop-filter: blur(12px);
   color: white;
   width: 100%;
   box-sizing: border-box;
   border-bottom: 1px solid #3a3a3a;
-  
-  /* NEW: Make navbar sticky */
   position: sticky;
   top: 0;
   z-index: 100;
 }
 
+/* === Nav Brand (Left) === */
 .navbar a.nav-brand {
   font-size: 1.6rem;
-  font-weight: 700; /* Bolder brand */
+  font-weight: 700;
   color: #fff;
   text-decoration: none;
-}
-.navbar a.nav-brand:hover {
-  color: #fff;
+  display: flex; /* Align icon */
+  align-items: center;
+  gap: 0.5rem; /* Space between icon and text */
 }
 
-.nav-links {
+/* === Nav Links (Center & Right) === */
+.nav-links, .nav-auth {
   display: flex;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.75rem; /* Consistent gap */
+}
+.nav-auth {
+  margin-left: auto; /* Pushes auth block to right */
 }
 
-.nav-links a {
+/* Base link style */
+.nav-links a, .nav-auth-link {
   color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   font-weight: 500;
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 1rem; /* Slightly larger padding */
   border-radius: 6px;
-  position: relative;
   transition: all 0.25s;
+  display: flex; /* Align icon */
+  align-items: center;
+  gap: 0.4rem; /* Space icon and text */
 }
-
-.nav-links a:hover {
+.nav-links a:hover, .nav-auth-link:hover {
   color: #fff;
   background-color: #333;
 }
-
-/* NEW: Active link style */
-.nav-links a.active {
-    color: #fff;
-    background-color: #333;
+.nav-links a.active { /* For center links */
+  color: #fff;
+  background-color: #444; /* Slightly different active bg */
 }
 
-/* Override .container to account for sticky nav */
-.container {
-  width: 100%;
-  padding: 2rem;
-  text-align: center;
+/* Specific Auth Link Styles */
+.nav-auth-link.register-btn {
+  background-color: #646cff;
+  color: white;
+  border: none;
+}
+.nav-auth-link.register-btn:hover {
+  background-color: #535bf2;
 }
 
 .nav-user {
-  display: flex;
-  align-items: center;
   color: rgba(255, 255, 255, 0.7);
-  margin-right: 1rem;
+  margin-right: 0.5rem; /* Less margin */
 }
+
+/* Base Logout Button Style (for guests) */
 .nav-logout-btn {
   background: none;
-  border: none;
+  border: 1px solid #444;
   color: rgba(255, 255, 255, 0.7);
   font-family: inherit;
   font-size: 1rem;
   font-weight: 500;
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.25s;
+  display: flex; /* Align icon */
+  align-items: center;
+  gap: 0.4rem;
 }
 .nav-logout-btn:hover {
-  color: #fff;
+  color: #ff8a8a; /* Red hover for logout */
+  background-color: rgba(255, 107, 107, 0.1);
+  border-color: #ff6b6b;
+}
+
+/* === NEW: Admin Dropdown Styles (Click-based) === */
+.nav-admin-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.nav-admin-btn {
   background-color: #333;
+  color: white;
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border: 1px solid #444;
   border-radius: 6px;
+  cursor: pointer;
+  display: flex; /* Align icon */
+  align-items: center;
+  gap: 0.4rem;
+  transition: background-color 0.25s;
+}
+.nav-admin-btn:hover,
+.nav-admin-dropdown:focus-within .nav-admin-btn /* Keep style when dropdown open */ {
+  background-color: #444;
+}
+
+.dropdown-content {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  background-color: #2a2a2a;
+  min-width: 220px; /* Wider */
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+  z-index: 101;
+  right: 0;
+  border-radius: 8px;
+  border: 1px solid #444;
+  overflow: hidden;
+  margin-top: 6px; /* Space from button */
+  padding: 0.5rem 0; /* Padding top/bottom */
+}
+
+/* Links inside dropdown */
+.dropdown-content a {
+  color: rgba(255, 255, 255, 0.8);
+  padding: 10px 16px; /* Adjust padding */
+  text-decoration: none;
+  display: flex; /* Align icon */
+  align-items: center;
+  gap: 0.6rem; /* Space icon and text */
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  border-left: 3px solid transparent; /* For active indicator */
+}
+.dropdown-content a:hover {
+  background-color: #333;
+  color: white;
+  border-left-color: #646cff; /* Indicate hover */
+}
+.dropdown-content a.active {
+  background-color: rgba(100, 108, 255, 0.1); /* Subtle active bg */
+  color: #a0a8ff; /* Lighter active color */
+  font-weight: 600;
+  border-left-color: #646cff; /* Active indicator */
+}
+
+/* Logout Button inside dropdown */
+.dropdown-logout-btn {
+  background: none;
+  border: none;
+  color: #ff8a8a; /* Red color */
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: left; /* Ensure text aligns left */
+  width: 100%; /* Take full width */
+  margin-top: 0.5rem; /* Space above logout */
+  border-top: 1px solid #444; /* Separator */
+}
+.dropdown-logout-btn:hover {
+  background-color: rgba(255, 107, 107, 0.1);
+  color: #ff6b6b; /* Brighter red on hover */
+}
+
+/* NEW: Icon Base Style */
+.nav-icon {
+  vertical-align: middle; /* Align icons better with text */
+  margin-right: 0.1em; /* Tiny space調整 */
+  font-size: 1.1em; /* Make icons slightly larger */
+}
+
+
+/* === Main Container === */
+.container {
+  width: 100%;
+  padding: 2rem;
+  text-align: center;
 }

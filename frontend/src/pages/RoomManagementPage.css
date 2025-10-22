@@ -75,3 +75,40 @@
 .status-control select {
     flex: 1;
 }
+
+/* --- NEW: Filter Bar Styles --- */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    padding: 1.5rem 2rem;
+    background-color: #242424; /* Uses .card styles */
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 200px;
+    flex: 1;
+}
+
+.filter-group label {
+    font-weight: 500;
+    font-size: 1rem;
+    color: #fff;
+    text-align: left;
+}
+
+.filter-group select {
+    font-size: 1rem;
+    padding: 0.75em 1em;
+}
+
+.filter-results {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: left;
+}

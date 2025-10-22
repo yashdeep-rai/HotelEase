@@ -74,6 +74,61 @@ app.post('/api/bookings', authenticateToken, async (req, res) => {
   }
 });
 
+
+// GET: Get all bookings for the currently logged-in user
+app.get('/api/bookings/mybookings', authenticateToken, async (req, res) => {
+    const user_id = req.user.id; // Get user ID from the token
+
+    try {
+        const query = `
+            SELECT
+                b.booking_id,
+                b.check_in_date,
+                b.check_out_date,
+                b.total_amount,
+                b.status,
+                r.room_number,
+                r.room_type,
+                r.rate
+            FROM bookings b
+            JOIN rooms r ON b.room_id = r.room_id
+            WHERE b.user_id = ?
+            ORDER BY b.check_in_date DESC;
+        `;
+        const [rows] = await pool.query(query, [user_id]);
+        res.json(rows);
+    } catch (error) {
+        console.error('Database query failed:', error);
+        res.status(500).json({ error: 'Failed to fetch your bookings' });
+    }
+});
+
+
+// --- ADMIN-ONLY ROUTES ---
+// All routes below require both a valid token AND an 'admin' role
+
+// NEW: GET Dashboard Stats
+app.get('/api/dashboard/stats', authenticateToken, authorizeRole('admin'), async (req, res) => {
+    try {
+        // Run all count queries in parallel
+        const [occupiedRooms] = await pool.query("SELECT COUNT(*) as count FROM rooms WHERE status = 'Occupied'");
+        const [availableRooms] = await pool.query("SELECT COUNT(*) as count FROM rooms WHERE status = 'Available'");
+        const [checkInsToday] = await pool.query("SELECT COUNT(*) as count FROM bookings WHERE check_in_date = CURDATE() AND status != 'Cancelled'");
+        const [totalGuests] = await pool.query("SELECT COUNT(*) as count FROM users WHERE role = 'guest'");
+
+        res.json({
+            occupiedRooms: occupiedRooms[0].count,
+            availableRooms: availableRooms[0].count,
+            checkInsToday: checkInsToday[0].count,
+            totalGuests: totalGuests[0].count,
+        });
+
+    } catch (error) {
+        console.error('Dashboard Stats Error:', error);
+        res.status(500).json({ error: 'Failed to fetch dashboard statistics' });
+    }
+});
+
 // DELETE: Cancel/Delete a booking
 // (This route is accessible to all authenticated users,
 // but you could add logic to check if req.user.id === booking.user_id)
@@ -169,6 +224,78 @@ app.get('/api/users', authenticateToken, authorizeRole('admin'), async (req, res
         res.status(500).json({ error: 'Database query failed' });
     }
 });
+
+
+// ... after app.get('/api/users', ... )
+
+// PUT: Update a user's role
+app.put('/api/users/:id/role', authenticateToken, authorizeRole('admin'), async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    // Safety check: Ensure role is valid
+    if (!role || !['admin', 'guest'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role specified' });
+    }
+
+    // Safety check: Prevent admin from changing their own role
+    if (req.user.id.toString() === id.toString()) {
+        return res.status(403).json({ error: 'Cannot change your own role' });
+    }
+
+    try {
+        const [result] = await pool.query('UPDATE users SET role = ? WHERE user_id = ?', [role, id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ message: 'User role updated successfully' });
+    } catch (error) {
+        console.error('Role update error:', error);
+        res.status(500).json({ error: 'Database update failed' });
+    }
+});
+
+// DELETE: Delete a user
+app.delete('/api/users/:id', authenticateToken, authorizeRole('admin'), async (req, res) => {
+    const { id } = req.params;
+
+    // Safety check: Prevent admin from deleting themselves
+    if (req.user.id.toString() === id.toString()) {
+        return res.status(403).json({ error: 'Cannot delete your own account' });
+    }
+
+    let connection;
+    try {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 1. Delete all bookings associated with the user
+        // We must do this first to avoid foreign key constraint errors
+        await connection.query('DELETE FROM bookings WHERE user_id = ?', [id]);
+
+        // 2. Delete the user
+        const [result] = await connection.query('DELETE FROM users WHERE user_id = ?', [id]);
+        
+        if (result.affectedRows === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // 3. Commit the transaction
+        await connection.commit();
+        res.json({ message: 'User and all associated bookings have been deleted' });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('User deletion error:', error);
+        res.status(500).json({ error: 'Database transaction failed' });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+
+// ... before app.get('/api/rooms', ... )
 
 // GET: Get ALL rooms (not just available)
 app.get('/api/rooms', authenticateToken, authorizeRole('admin'), async (req, res) => {

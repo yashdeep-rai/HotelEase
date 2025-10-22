@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
-import './BookingsListPage.css';
+// We can re-use the admin's table CSS
+import './BookingsListPage.css'; 
 import '../components/Modal.css';
-import { useAuth } from '../context/AuthContext'; // 1. Import useAuth
-import { FiTrash2 } from 'react-icons/fi';
 
-export default function BookingsListPage() {
+export default function MyBookingsPage() {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    
-    const { token } = useAuth(); // 2. Get the token from the context
+    const { token } = useAuth(); // Get token to make authenticated request
 
     // State for modals
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,49 +17,45 @@ export default function BookingsListPage() {
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
     const [infoModalContent, setInfoModalContent] = useState({ title: '', body: '' });
 
-    // Fetch all bookings
-    useEffect(() => {
-        async function fetchBookings() {
-            try {
-                setLoading(true);
-                // 3. Add token to the fetch request headers
-                const response = await fetch('/api/bookings', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                if (!response.ok) {
-                    throw new Error('Failed to fetch bookings');
+    // Fetch this user's bookings
+    const fetchMyBookings = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/bookings/mybookings', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
                 }
-                const data = await response.json();
-                setBookings(data);
-                setError(null);
-            } catch (err) {
-                console.error(err);
-                setError(err.message);
-            } finally {
-                setLoading(false);
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch your bookings');
             }
+            const data = await response.json();
+            setBookings(data);
+            setError(null);
+        } catch (err) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
         }
-        
-        if (token) { // 4. Only fetch if the token exists
-            fetchBookings();
-        }
-    }, [token]); // 5. Add token as a dependency
+    };
 
-    // This function just opens the confirmation modal
+    useEffect(() => {
+        fetchMyBookings();
+    }, [token]);
+
+    // Open confirmation modal
     const handleCancelClick = (bookingId) => {
         setBookingToCancel(bookingId);
         setIsModalOpen(true);
     };
 
-    // This function runs when the user clicks "Confirm"
+    // Run the DELETE request
     const handleConfirmCancel = async () => {
         if (!bookingToCancel) return;
         setIsModalOpen(false);
 
         try {
-            // 6. Add token to the DELETE request
             const response = await fetch(`/api/bookings/${bookingToCancel}`, {
                 method: 'DELETE',
                 headers: {
@@ -79,7 +74,7 @@ export default function BookingsListPage() {
                 throw new Error(errorMsg);
             }
 
-            // Success!
+            // Success: Remove booking from UI
             setBookings(prevBookings => 
                 prevBookings.filter(booking => booking.booking_id !== bookingToCancel)
             );
@@ -102,9 +97,6 @@ export default function BookingsListPage() {
 
     return (
         <div className="bookings-list-page">
-            {/* ... (All your Modals and JSX) ... */}
-            {/* The rest of your file is correct. */}
-            
             <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
@@ -112,7 +104,6 @@ export default function BookingsListPage() {
                 title="Cancel Booking"
             >
                 <p>Are you sure you want to permanently cancel this booking?</p>
-                <p>This action cannot be undone.</p>
             </Modal>
 
             <Modal
@@ -125,19 +116,17 @@ export default function BookingsListPage() {
                 <p>{infoModalContent.body}</p>
             </Modal>
 
-            <h1>All Bookings</h1>
+            <h1>My Bookings</h1>
             
-            {loading && <p>Loading bookings...</p>}
+            {loading && <p>Loading your bookings...</p>}
             {error && <p className="error-message">{error}</p>}
             
             {!loading && !error && (
                 <table className="bookings-table">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Guest</th>
-                            <th>Email</th>
                             <th>Room</th>
+                            <th>Type</th>
                             <th>Check-In</th>
                             <th>Check-Out</th>
                             <th>Total</th>
@@ -149,10 +138,8 @@ export default function BookingsListPage() {
                         {bookings.length > 0 ? (
                             bookings.map(booking => (
                                 <tr key={booking.booking_id}>
-                                    <td>{booking.booking_id}</td>
-                                    <td>{booking.first_name} {booking.last_name}</td>
-                                    <td>{booking.email}</td>
-                                    <td>{booking.room_number} ({booking.room_type})</td>
+                                    <td>{booking.room_number}</td>
+                                    <td>{booking.room_type}</td>
                                     <td>{formatDate(booking.check_in_date)}</td>
                                     <td>{formatDate(booking.check_out_date)}</td>
                                     <td>${booking.total_amount}</td>
@@ -162,14 +149,14 @@ export default function BookingsListPage() {
                                             className="action-btn cancel-btn"
                                             onClick={() => handleCancelClick(booking.booking_id)}
                                         >
-                                            <FiTrash2 className="btn-icon"/> Cancel
+                                            Cancel
                                         </button>
                                     </td>
                                 </tr>
                             ))
                         ) : (
                             <tr>
-                                <td colSpan="9">No bookings found.</td>
+                                <td colSpan="7">You have no bookings.</td>
                             </tr>
                         )}
                     </tbody>

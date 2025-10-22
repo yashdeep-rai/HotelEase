@@ -1,8 +1,7 @@
-// frontend/src/pages/LoginPage.jsx
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import './RegisterPage.css'; // We can reuse the form CSS
+import './RegisterPage.css'; // We'll reuse the register page's CSS
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -28,12 +27,13 @@ export default function LoginPage() {
             // Call login from AuthContext
             login(data.token, data.user);
             
-            // Redirect based on role
+            // --- THIS IS THE FIX ---
             if (data.user.role === 'admin') {
-                navigate('/rooms'); // Redirect admin to Room Management
+                navigate('/dashboard'); // Redirect admin to Dashboard
             } else {
                 navigate('/book'); // Redirect guest to Book a Room
             }
+            // --- END OF FIX ---
 
         } catch (err) {
             setError(err.message);
@@ -41,7 +41,7 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="add-guest-page">
+        <div className="add-guest-page"> {/* Reusing this class for styling */}
             <h1>Login</h1>
             <form onSubmit={handleSubmit} className="guest-form">
                 <div className="form-group">
