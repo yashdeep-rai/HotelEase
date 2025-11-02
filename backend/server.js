@@ -3,6 +3,9 @@ import cors from 'cors';
 import pool from './db.js';
 import { authRoutes } from './routes/auth.js'; // Import auth routes
 import { authenticateToken, authorizeRole } from './middleware/auth.js'; // Import middleware
+import { suggestPrice } from './forecast.js';
+import { get as cacheGet, set as cacheSet } from './cache.js';
+import { startPrecompute } from './pricePrecompute.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,85 +25,101 @@ app.use('/api/auth', authRoutes);
 
 // GET: Find available rooms
 app.get('/api/rooms/available', authenticateToken, async (req, res) => {
-  const { check_in, check_out } = req.query;
+    const { check_in, check_out } = req.query;
 
-  if (!check_in || !check_out) {
-    return res.status(400).json({ error: 'Missing check_in or check_out dates' });
-  }
+    if (!check_in || !check_out) {
+        return res.status(400).json({ error: 'Missing check_in or check_out dates' });
+    }
 
-  try {
-    const query = `
-      SELECT * FROM rooms
-      WHERE room_id NOT IN (
-          SELECT room_id FROM bookings
-          WHERE status != 'Cancelled' AND (
-              (check_in_date <= ? AND check_out_date > ?) OR
-              (check_in_date < ? AND check_out_date >= ?) OR
-              (check_in_date >= ? AND check_out_date <= ?)
-          )
-      ) AND status = 'Available';
-    `;
-    const [rows] = await pool.query(query, [check_in, check_in, check_out, check_out, check_in, check_out]);
-    res.json(rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Database query failed' });
-  }
+    try {
+        const cacheKey = `availability:${check_in}:${check_out}`;
+        const cached = await cacheGet(cacheKey);
+        if (cached) return res.json(cached);
+
+        const query = `
+            SELECT r.RoomID AS room_id, r.RoomNumber AS room_number, rt.TypeName AS room_type, rt.BasePricePerNight AS rate, r.Status AS status
+            FROM Rooms r
+            JOIN RoomTypes rt ON r.RoomTypeID = rt.RoomTypeID
+            WHERE r.RoomID NOT IN (
+                    SELECT b.RoomID FROM Bookings b
+                    WHERE b.Status != 'Cancelled' AND (
+                            (b.CheckInDate <= ? AND b.CheckOutDate > ?) OR
+                            (b.CheckInDate < ? AND b.CheckOutDate >= ?) OR
+                            (b.CheckInDate >= ? AND b.CheckOutDate <= ?)
+                    )
+            ) AND r.Status = 'Available';
+        `;
+        const [rows] = await pool.query(query, [check_in, check_in, check_out, check_out, check_in, check_out]);
+        // cache for short time (60s)
+        await cacheSet(cacheKey, rows, 60);
+        res.json(rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Database query failed' });
+    }
 });
 
 // POST: Create a new booking (for the logged-in user)
 app.post('/api/bookings', authenticateToken, async (req, res) => {
-  const { room_id, check_in_date, check_out_date, total_amount } = req.body;
-  const user_id = req.user.id; // Get user ID from the authenticated token
+    const { room_id, check_in_date, check_out_date, total_amount, num_guests } = req.body;
+    const user_id = req.user.id; // Get user ID from the authenticated token
 
-  if (!user_id || !room_id || !check_in_date || !check_out_date) {
-    return res.status(400).json({ error: 'Missing required booking information' });
-  }
+    if (!user_id || !room_id || !check_in_date || !check_out_date) {
+        return res.status(400).json({ error: 'Missing required booking information' });
+    }
 
-  try {
-    const query = `
-      INSERT INTO bookings (user_id, room_id, check_in_date, check_out_date, total_amount, status)
-      VALUES (?, ?, ?, ?, ?, 'Confirmed')
-    `;
-    const [result] = await pool.query(query, [user_id, room_id, check_in_date, check_out_date, total_amount]);
-    
-    // Update room status
-    await pool.query("UPDATE rooms SET status = 'Occupied' WHERE room_id = ?", [room_id]);
-    
-    res.status(201).json({ message: 'Booking created!', booking_id: result.insertId });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Database insert failed' });
-  }
+    try {
+        // Find associated guest_id for this user (users.guest_id)
+        const [uRows] = await pool.query('SELECT guest_id FROM users WHERE user_id = ?', [user_id]);
+        if (uRows.length === 0 || !uRows[0].guest_id) {
+            return res.status(400).json({ error: 'No linked guest profile found for this user' });
+        }
+        const primaryGuestId = uRows[0].guest_id;
+
+        const insertQuery = `
+            INSERT INTO Bookings (PrimaryGuestID, UserID, RoomID, CheckInDate, CheckOutDate, NumGuests, TotalAmount, Status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'Confirmed')
+        `;
+        const [result] = await pool.query(insertQuery, [primaryGuestId, user_id, room_id, check_in_date, check_out_date, num_guests || 1, total_amount]);
+
+        // Update room status
+        await pool.query("UPDATE Rooms SET Status = 'Occupied' WHERE RoomID = ?", [room_id]);
+
+        res.status(201).json({ message: 'Booking created!', booking_id: result.insertId });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Database insert failed' });
+    }
 });
 
 
 // GET: Get all bookings for the currently logged-in user
 app.get('/api/bookings/mybookings', authenticateToken, async (req, res) => {
-    const user_id = req.user.id; // Get user ID from the token
+        const user_id = req.user.id; // Get user ID from the token
 
-    try {
-        const query = `
-            SELECT
-                b.booking_id,
-                b.check_in_date,
-                b.check_out_date,
-                b.total_amount,
-                b.status,
-                r.room_number,
-                r.room_type,
-                r.rate
-            FROM bookings b
-            JOIN rooms r ON b.room_id = r.room_id
-            WHERE b.user_id = ?
-            ORDER BY b.check_in_date DESC;
-        `;
-        const [rows] = await pool.query(query, [user_id]);
-        res.json(rows);
-    } catch (error) {
-        console.error('Database query failed:', error);
-        res.status(500).json({ error: 'Failed to fetch your bookings' });
-    }
+        try {
+                const query = `
+                        SELECT
+                                b.BookingID AS booking_id,
+                                b.CheckInDate AS check_in_date,
+                                b.CheckOutDate AS check_out_date,
+                                b.TotalAmount AS total_amount,
+                                b.Status AS status,
+                                r.RoomNumber AS room_number,
+                                rt.TypeName AS room_type,
+                                rt.BasePricePerNight AS rate
+                        FROM Bookings b
+                        JOIN Rooms r ON b.RoomID = r.RoomID
+                        JOIN RoomTypes rt ON r.RoomTypeID = rt.RoomTypeID
+                        WHERE b.UserID = ?
+                        ORDER BY b.CheckInDate DESC;
+                `;
+                const [rows] = await pool.query(query, [user_id]);
+                res.json(rows);
+        } catch (error) {
+                console.error('Database query failed:', error);
+                res.status(500).json({ error: 'Failed to fetch your bookings' });
+        }
 });
 
 
@@ -110,10 +129,10 @@ app.get('/api/bookings/mybookings', authenticateToken, async (req, res) => {
 // NEW: GET Dashboard Stats
 app.get('/api/dashboard/stats', authenticateToken, authorizeRole('admin'), async (req, res) => {
     try {
-        // Run all count queries in parallel
-        const [occupiedRooms] = await pool.query("SELECT COUNT(*) as count FROM rooms WHERE status = 'Occupied'");
-        const [availableRooms] = await pool.query("SELECT COUNT(*) as count FROM rooms WHERE status = 'Available'");
-        const [checkInsToday] = await pool.query("SELECT COUNT(*) as count FROM bookings WHERE check_in_date = CURDATE() AND status != 'Cancelled'");
+        // Run all count queries in parallel (use normalized table names)
+        const [occupiedRooms] = await pool.query("SELECT COUNT(*) as count FROM Rooms WHERE Status = 'Occupied'");
+        const [availableRooms] = await pool.query("SELECT COUNT(*) as count FROM Rooms WHERE Status = 'Available'");
+        const [checkInsToday] = await pool.query("SELECT COUNT(*) as count FROM Bookings WHERE CheckInDate = CURDATE() AND Status != 'Cancelled'");
         const [totalGuests] = await pool.query("SELECT COUNT(*) as count FROM users WHERE role = 'guest'");
 
         res.json({
@@ -136,21 +155,21 @@ app.delete('/api/bookings/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   let connection; // Define connection outside the try block
 
-  try {
-    // 1. Get connection
-    connection = await pool.getConnection();
-    await connection.beginTransaction();
+        try {
+        // 1. Get connection
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
 
-    // 2. Get the booking details
-    const [rows] = await connection.query('SELECT user_id, room_id, status FROM bookings WHERE booking_id = ?', [id]);
-    
-    if (rows.length === 0) {
-      await connection.rollback();
-      connection.release(); 
-      return res.status(404).json({ error: 'Booking not found' });
-    }
+        // 2. Get the booking details (normalized names)
+        const [rows] = await connection.query('SELECT UserID as user_id, RoomID as room_id, Status as status FROM Bookings WHERE BookingID = ?', [id]);
 
-    const { room_id, status } = rows[0];
+        if (rows.length === 0) {
+            await connection.rollback();
+            connection.release(); 
+            return res.status(404).json({ error: 'Booking not found' });
+        }
+
+        const { room_id, status } = rows[0];
 
     // Optional: Check if user is admin OR the owner of the booking
     // if (req.user.role !== 'admin' && req.user.id !== rows[0].user_id) {
@@ -160,11 +179,11 @@ app.delete('/api/bookings/:id', authenticateToken, async (req, res) => {
     // }
 
     // 3. Delete the booking
-    await connection.query('DELETE FROM bookings WHERE booking_id = ?', [id]);
+    await connection.query('DELETE FROM Bookings WHERE BookingID = ?', [id]);
 
     // 4. If the booking was active, set the room back to 'Available'
     if (status === 'Confirmed' || status === 'Checked-In') {
-        await connection.query("UPDATE rooms SET status = 'Available' WHERE room_id = ?", [room_id]);
+        await connection.query("UPDATE Rooms SET Status = 'Available' WHERE RoomID = ?", [room_id]);
     }
 
     // 5. If all queries succeeded, commit the changes
@@ -189,30 +208,32 @@ app.delete('/api/bookings/:id', authenticateToken, async (req, res) => {
 
 // GET: Get all bookings with details
 app.get('/api/bookings', authenticateToken, authorizeRole('admin'), async (req, res) => {
-  try {
-    const query = `
-      SELECT
-        b.booking_id,
-        b.check_in_date,
-        b.check_out_date,
-        b.total_amount,
-        b.status,
-        u.first_name,
-        u.last_name,
-        u.email,
-        r.room_number,
-        r.room_type
-      FROM bookings b
-      JOIN users u ON b.user_id = u.user_id
-      JOIN rooms r ON b.room_id = r.room_id
-      ORDER BY b.check_in_date DESC;
-    `;
-    const [rows] = await pool.query(query);
-    res.json(rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Database query failed' });
-  }
+    try {
+        const query = `
+            SELECT
+                b.BookingID AS booking_id,
+                b.CheckInDate AS check_in_date,
+                b.CheckOutDate AS check_out_date,
+                b.TotalAmount AS total_amount,
+                b.Status AS status,
+                g.FirstName AS first_name,
+                g.LastName AS last_name,
+                u.email,
+                r.RoomNumber AS room_number,
+                rt.TypeName AS room_type
+            FROM Bookings b
+            JOIN users u ON b.UserID = u.user_id
+            LEFT JOIN Guests g ON u.guest_id = g.GuestID
+            JOIN Rooms r ON b.RoomID = r.RoomID
+            JOIN RoomTypes rt ON r.RoomTypeID = rt.RoomTypeID
+            ORDER BY b.CheckInDate DESC;
+        `;
+        const [rows] = await pool.query(query);
+        res.json(rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Database query failed' });
+    }
 });
 
 // PUT: Update a booking's status (Check-in/Check-out)
@@ -230,8 +251,8 @@ app.put('/api/bookings/:id/status', authenticateToken, authorizeRole('admin'), a
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        // 1. Get current booking status and room ID
-        const [rows] = await connection.query('SELECT status, room_id FROM bookings WHERE booking_id = ?', [id]);
+        // 1. Get current booking status and room ID (normalized names)
+        const [rows] = await connection.query('SELECT Status as status, RoomID as room_id FROM Bookings WHERE BookingID = ?', [id]);
         if (rows.length === 0) {
             await connection.rollback();
             return res.status(404).json({ error: 'Booking not found' });
@@ -254,7 +275,7 @@ app.put('/api/bookings/:id/status', authenticateToken, authorizeRole('admin'), a
         }
         
         // 3. Update booking status
-        await connection.query('UPDATE bookings SET status = ? WHERE booking_id = ?', [newStatus, id]);
+        await connection.query('UPDATE Bookings SET Status = ? WHERE BookingID = ?', [newStatus, id]);
 
         // 4. Update room status based on the action
         let roomStatusUpdate = null;
@@ -267,7 +288,7 @@ app.put('/api/bookings/:id/status', authenticateToken, authorizeRole('admin'), a
         }
 
         if (roomStatusUpdate) {
-            await connection.query('UPDATE rooms SET status = ? WHERE room_id = ?', [roomStatusUpdate, roomId]);
+            await connection.query('UPDATE Rooms SET Status = ? WHERE RoomID = ?', [roomStatusUpdate, roomId]);
         }
 
         // 5. Commit
@@ -286,9 +307,15 @@ app.put('/api/bookings/:id/status', authenticateToken, authorizeRole('admin'), a
 // GET: Get all users (replaces old 'guests' route)
 app.get('/api/users', authenticateToken, authorizeRole('admin'), async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT user_id, first_name, last_name, email, phone, role FROM users');
+        const query = `
+            SELECT u.user_id, g.FirstName AS first_name, g.LastName AS last_name, u.email, g.Phone AS phone, u.role
+            FROM users u
+            LEFT JOIN Guests g ON u.guest_id = g.GuestID
+        `;
+        const [rows] = await pool.query(query);
         res.json(rows);
     } catch (error) {
+        console.error('Users query failed:', error);
         res.status(500).json({ error: 'Database query failed' });
     }
 });
@@ -337,12 +364,12 @@ app.delete('/api/users/:id', authenticateToken, authorizeRole('admin'), async (r
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        // 1. Delete all bookings associated with the user
-        // We must do this first to avoid foreign key constraint errors
-        await connection.query('DELETE FROM bookings WHERE user_id = ?', [id]);
+    // 1. Delete all bookings associated with the user
+    // We must do this first to avoid foreign key constraint errors
+    await connection.query('DELETE FROM Bookings WHERE UserID = ?', [id]);
 
-        // 2. Delete the user
-        const [result] = await connection.query('DELETE FROM users WHERE user_id = ?', [id]);
+    // 2. Delete the user
+    const [result] = await connection.query('DELETE FROM users WHERE user_id = ?', [id]);
         
         if (result.affectedRows === 0) {
             await connection.rollback();
@@ -368,7 +395,13 @@ app.delete('/api/users/:id', authenticateToken, authorizeRole('admin'), async (r
 // GET: Get ALL rooms (not just available)
 app.get('/api/rooms', authenticateToken, authorizeRole('admin'), async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM rooms ORDER BY room_number');
+        const query = `
+            SELECT r.RoomID as room_id, r.RoomNumber as room_number, rt.TypeName as room_type, rt.BasePricePerNight as rate, r.Status as status
+            FROM Rooms r
+            JOIN RoomTypes rt ON r.RoomTypeID = rt.RoomTypeID
+            ORDER BY r.RoomNumber
+        `;
+        const [rows] = await pool.query(query);
         res.json(rows);
     } catch (error) {
         console.error(error);
@@ -386,7 +419,7 @@ app.put('/api/rooms/:id/status', authenticateToken, authorizeRole('admin'), asyn
     }
 
     try {
-        const query = 'UPDATE rooms SET status = ? WHERE room_id = ?';
+        const query = 'UPDATE Rooms SET Status = ? WHERE RoomID = ?';
         const [result] = await pool.query(query, [status, id]);
 
         if (result.affectedRows === 0) {
@@ -404,4 +437,43 @@ app.put('/api/rooms/:id/status', authenticateToken, authorizeRole('admin'), asyn
 // Start the server
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
+});
+// Start scheduled precompute (non-blocking)
+try {
+    startPrecompute();
+} catch (err) {
+    console.error('Failed to start precompute:', err);
+}
+
+// Forecasting endpoint: suggest price for a room type over a date range
+// Example: GET /api/forecast/price?roomTypeID=2&from=2024-12-01&to=2024-12-31
+app.get('/api/forecast/price', authenticateToken, authorizeRole('admin'), async (req, res) => {
+    const roomTypeID = parseInt(req.query.roomTypeID || req.query.roomTypeId || req.query.roomType, 10);
+    const from = req.query.from;
+    const to = req.query.to;
+
+    if (!roomTypeID || !from || !to) {
+        return res.status(400).json({ error: 'Missing roomTypeID, from or to query parameters' });
+    }
+
+    try {
+        // If the request is for a single day (to = next day), prefer cached precomputed daily suggestion
+        const [daysRow] = await pool.query('SELECT GREATEST(DATEDIFF(?, ?), 0) as days', [to, from]);
+        const days = daysRow && daysRow[0] ? Number(daysRow[0].days) : null;
+
+        if (days === 1) {
+            const cacheKey = `price_suggestion:${roomTypeID}:${from}`;
+            const cached = await cacheGet(cacheKey);
+            if (cached) return res.json(cached);
+        }
+
+        // fallback: compute on demand and cache a short-lived entry
+        const result = await suggestPrice(pool, roomTypeID, from, to);
+        const cacheKeyRange = `forecast:${roomTypeID}:${from}:${to}`;
+        await cacheSet(cacheKeyRange, result, 300); // cache 5 minutes
+        res.json(result);
+    } catch (err) {
+        console.error('Forecast error:', err);
+        res.status(500).json({ error: 'Failed to compute forecast' });
+    }
 });

@@ -23,8 +23,14 @@ router.post('/register', async (req, res) => {
         // Determine the role
         const userRole = role === 'admin' ? 'admin' : 'guest';
 
-        const query = 'INSERT INTO users (first_name, last_name, email, phone, password_hash, role) VALUES (?, ?, ?, ?, ?, ?)';
-        const [result] = await pool.query(query, [first_name, last_name, email, phone, password_hash, userRole]);
+        // 1) Insert into Guests table and get GuestID
+        const guestInsert = 'INSERT INTO Guests (FirstName, LastName, Email, Phone) VALUES (?, ?, ?, ?)';
+        const [guestResult] = await pool.query(guestInsert, [first_name, last_name, email, phone]);
+        const guestId = guestResult.insertId;
+
+        // 2) Insert into users table referencing the created guest
+        const userInsert = 'INSERT INTO users (guest_id, email, password_hash, role) VALUES (?, ?, ?, ?)';
+        const [result] = await pool.query(userInsert, [guestId, email, password_hash, userRole]);
 
         res.status(201).json({ message: 'User created!', user_id: result.insertId });
 
@@ -32,6 +38,7 @@ router.post('/register', async (req, res) => {
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({ error: 'Email already exists' });
         }
+        console.error('Registration error:', error);
         res.status(500).json({ error: 'Database insert failed' });
     }
 });
@@ -45,7 +52,11 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+        // Join users -> guests to fetch guest details alongside auth row
+        const [rows] = await pool.query(
+            'SELECT u.user_id, u.guest_id, u.email, u.password_hash, u.role, g.FirstName, g.LastName FROM users u LEFT JOIN Guests g ON u.guest_id = g.GuestID WHERE u.email = ?',
+            [email]
+        );
         if (rows.length === 0) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
@@ -62,9 +73,10 @@ router.post('/login', async (req, res) => {
         const payload = {
             user: {
                 id: user.user_id,
+                guest_id: user.guest_id,
                 email: user.email,
                 role: user.role,
-                first_name: user.first_name
+                first_name: user.FirstName || null
             }
         };
 

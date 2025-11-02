@@ -33,6 +33,7 @@ export default function BookingPage() {
     const [loading, setLoading] = useState(false);
     const [roomError, setRoomError] = useState(null);
     const [hasSearched, setHasSearched] = useState(false);
+    const [dynamicPrices, setDynamicPrices] = useState({});
 
     // State for modals
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -63,6 +64,25 @@ export default function BookingPage() {
 
             const data = await response.json();
             setRooms(data);
+
+            // Fetch dynamic prices for each room type
+            const pricePromises = data.map(async room => {
+                try {
+                    const priceRes = await fetch(`/api/forecast/price?roomTypeID=${room.room_type_id}&from=${searchCheckIn}&to=${searchCheckOut}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (priceRes.ok) {
+                        const priceData = await priceRes.json();
+                        setDynamicPrices(prev => ({
+                            ...prev,
+                            [room.room_type_id]: priceData
+                        }));
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch dynamic price:', err);
+                }
+            });
+            await Promise.all(pricePromises);
 
         } catch (err) {
             console.error("Failed to fetch rooms:", err);
@@ -122,7 +142,8 @@ export default function BookingPage() {
         const date2 = new Date(checkOut);
         const diffTime = Math.abs(date2 - date1);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        const totalAmount = diffDays * roomToBook.rate;
+        const ratePerNight = dynamicPrices[roomToBook.room_type_id]?.suggestedPrice || roomToBook.rate;
+        const totalAmount = diffDays * ratePerNight;
 
         // 7. Use the logged-in user's ID
         const bookingDetails = {
@@ -238,7 +259,24 @@ export default function BookingPage() {
                                     <h3>Room {room.room_number}</h3>
                                     <span className="room-type">{room.room_type}</span>
                                 </div>
-                                <p><strong>Rate:</strong> ₹{room.rate} / night</p>
+                                <div className="room-price-info">
+                                    <p>
+                                        <strong>Base Rate:</strong> ₹{room.rate} / night
+                                    </p>
+                                    {dynamicPrices[room.room_type_id] && (
+                                        <div className="dynamic-price">
+                                            <p className="suggested-price">
+                                                <strong>Today's Rate:</strong> ₹{dynamicPrices[room.room_type_id].suggestedPrice} / night
+                                            </p>
+                                            {dynamicPrices[room.room_type_id].holiday && (
+                                                <span className="holiday-badge">Holiday Season</span>
+                                            )}
+                                            {dynamicPrices[room.room_type_id].occupancyRate > 0.7 && (
+                                                <span className="high-demand-badge">High Demand</span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                                 <button
                                     onClick={() => handleBookRoom(room)}
                                     className="btn-primary"

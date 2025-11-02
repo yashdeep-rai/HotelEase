@@ -19,6 +19,8 @@ import UserManagementPage from './pages/UserManagementPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 
+import ForecastDashboard from './pages/ForecastDashboard';
+
 // Route Protectors (remain the same)
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
@@ -163,6 +165,7 @@ function App() {
                         <Route path="/bookings" element={<BookingsListPage />} />
                         <Route path="/rooms" element={<RoomManagementPage />} />
                         <Route path="/users" element={<UserManagementPage />} />
+                        <Route path="/forecast" element={<ForecastDashboard />} />
                     </Route>
                     <Route path="*" element={<h1>404 Not Found</h1>} />
                 </Routes>
