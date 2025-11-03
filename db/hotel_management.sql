@@ -30,7 +30,6 @@ CREATE TABLE Rooms (
     FOREIGN KEY (RoomTypeID) REFERENCES RoomTypes(RoomTypeID)
 ) ENGINE=InnoDB;
 
--- Guests: people (primary booker or family members). Email unique for login/contact.
 CREATE TABLE Guests (
     GuestID INT AUTO_INCREMENT PRIMARY KEY,
     FirstName VARCHAR(50) NOT NULL,
@@ -41,7 +40,17 @@ CREATE TABLE Guests (
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Bookings: single booking record, references primary guest and a room
+-- Users table for authentication / RBAC (links to Guests)
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    guest_id INT,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('admin','guest') NOT NULL DEFAULT 'guest',
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (guest_id) REFERENCES Guests(GuestID) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 CREATE TABLE Bookings (
     BookingID INT AUTO_INCREMENT PRIMARY KEY,
     PrimaryGuestID INT NOT NULL,
@@ -55,6 +64,7 @@ CREATE TABLE Bookings (
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (PrimaryGuestID) REFERENCES Guests(GuestID),
     FOREIGN KEY (RoomID) REFERENCES Rooms(RoomID),
+    FOREIGN KEY (UserID) REFERENCES users(user_id) ON DELETE SET NULL,
     CHECK (CheckOutDate > CheckInDate),
     CHECK (NumGuests > 0)
 ) ENGINE=InnoDB;
