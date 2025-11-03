@@ -41,15 +41,7 @@ CREATE TABLE Guests (
 ) ENGINE=InnoDB;
 
 -- Users table for authentication / RBAC (links to Guests)
-CREATE TABLE users (
-    user_id INT AUTO_INCREMENT PRIMARY KEY,
-    guest_id INT,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role ENUM('admin','guest') NOT NULL DEFAULT 'guest',
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (guest_id) REFERENCES Guests(GuestID) ON DELETE SET NULL
-) ENGINE=InnoDB;
+
 
 CREATE TABLE Bookings (
     BookingID INT AUTO_INCREMENT PRIMARY KEY,
