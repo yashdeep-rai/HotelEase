@@ -24,16 +24,26 @@ router.post('/register', async (req, res) => {
         // Determine the role
         const userRole = role === 'admin' ? 'admin' : 'guest';
 
-        // 1) Insert into Guests table and get GuestID
-        const guestInsert = 'INSERT INTO Guests (FirstName, LastName, Email, Phone) VALUES (?, ?, ?, ?)';
-        const [guestResult] = await pool.query(guestInsert, [first_name, last_name, email, phone]);
-        const guestId = guestResult.insertId;
+        // Use a transaction: insert into Guests and users together to avoid orphan guests
+        const conn = await pool.getConnection();
+        try {
+            await conn.beginTransaction();
 
-        // 2) Insert into users table referencing the created guest
-        const userInsert = 'INSERT INTO users (GuestID, email, password_hash, role) VALUES (?, ?, ?, ?)';
-        const [result] = await pool.query(userInsert, [guestId, email, password_hash, userRole]);
+            const guestInsert = 'INSERT INTO Guests (FirstName, LastName, Email, Phone) VALUES (?, ?, ?, ?)';
+            const [guestResult] = await conn.query(guestInsert, [first_name, last_name, email, phone]);
+            const guestId = guestResult.insertId;
 
-        res.status(201).json({ message: 'User created!', user_id: result.insertId });
+            const userInsert = 'INSERT INTO users (guest_id, email, password_hash, role) VALUES (?, ?, ?, ?)';
+            const [result] = await conn.query(userInsert, [guestId, email, password_hash, userRole]);
+
+            await conn.commit();
+            res.status(201).json({ message: 'User created!', user_id: result.insertId });
+        } catch (txErr) {
+            await conn.rollback();
+            throw txErr;
+        } finally {
+            conn.release();
+        }
 
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {
@@ -57,7 +67,7 @@ router.post('/login', async (req, res) => {
     try {
         // Join users -> guests to fetch guest details alongside auth row
         const [rows] = await pool.query(
-            'SELECT u.user_id, u.GuestID, u.email, u.password_hash, u.role, g.FirstName, g.LastName FROM users u LEFT JOIN Guests g ON u.GuestID = g.GuestID WHERE u.email = ?',
+            'SELECT u.user_id, u.guest_id, u.email, u.password_hash, u.role, g.FirstName, g.LastName FROM users u LEFT JOIN Guests g ON u.guest_id = g.GuestID WHERE u.email = ?',
             [email]
         );
         if (rows.length === 0) {
@@ -76,7 +86,7 @@ router.post('/login', async (req, res) => {
         const payload = {
             user: {
                 id: user.user_id,
-                guest_id: user.GuestID,
+                guest_id: user.guest_id,
                 email: user.email,
                 role: user.role,
                 first_name: user.FirstName || null

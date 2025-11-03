@@ -46,6 +46,7 @@ CREATE TABLE Guests (
 CREATE TABLE Bookings (
     BookingID INT AUTO_INCREMENT PRIMARY KEY,
     PrimaryGuestID INT NOT NULL,
+    UserID INT DEFAULT NULL,
     RoomID INT NOT NULL,
     CheckInDate DATE NOT NULL,
     CheckOutDate DATE NOT NULL,
@@ -90,6 +91,11 @@ CREATE TABLE users (
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_users_email ON users(email);
+
+-- Add foreign key from Bookings.UserID to users.user_id (added after users table exists)
+ALTER TABLE Bookings
+    ADD COLUMN IF NOT EXISTS UserID INT DEFAULT NULL,
+    ADD CONSTRAINT fk_bookings_user FOREIGN KEY (UserID) REFERENCES users(user_id) ON DELETE SET NULL;
 
 -- Sample seed data: RoomTypes, Rooms, Guests, Bookings, BookingGuests
 INSERT INTO RoomTypes (TypeName, Description, BasePricePerNight, MaxOccupancy, BedConfiguration, Amenities)
