@@ -25,8 +25,17 @@ export default function UserManagementPage() {
             const response = await fetch('/api/users', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (!response.ok) throw new Error('Failed to fetch users');
-            const data = await response.json();
+            // safe parse
+            const safeParseResponse = async (res) => {
+                const text = await res.text();
+                if (!text) return null;
+                try { return JSON.parse(text); } catch (e) { console.warn('safeParseResponse: invalid JSON', e); return null; }
+            };
+            if (!response.ok) {
+                const err = await safeParseResponse(response);
+                throw new Error((err && (err.error || err.message)) || 'Failed to fetch users');
+            }
+            const data = await safeParseResponse(response) || [];
             setUsers(data);
             setError(null);
         } catch (err) {
@@ -53,8 +62,10 @@ export default function UserManagementPage() {
             });
 
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Failed to update role');
+                const text = await response.text();
+                let errObj = null;
+                try { errObj = text ? JSON.parse(text) : null; } catch(e) { errObj = null; }
+                throw new Error((errObj && (errObj.error || errObj.message)) || 'Failed to update role');
             }
 
             // Update local state
@@ -91,8 +102,10 @@ export default function UserManagementPage() {
             });
 
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Failed to delete user');
+                 const text = await response.text();
+                 let errObj = null;
+                 try { errObj = text ? JSON.parse(text) : null; } catch(e) { errObj = null; }
+                 throw new Error((errObj && (errObj.error || errObj.message)) || 'Failed to delete user');
             }
 
             // Remove from local state

@@ -20,14 +20,24 @@ export default function ForecastDashboard() {
     setResult(null);
     try {
       const token = localStorage.getItem('token');
+      // Helper to safely parse possibly-empty JSON responses
+      const safeParseResponse = async (res) => {
+        const text = await res.text();
+        if (!text) return null;
+        try { return JSON.parse(text); } catch (e) { console.warn('safeParseResponse: invalid JSON', e); return null; }
+      };
+
       const res = await fetch(
         `/api/forecast/price?roomTypeID=${roomTypeId}&from=${date}&to=${date.replace(/\d+$/, d => String(Number(d) + 1).padStart(2, '0'))}`,
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-      if (!res.ok) throw new Error('API error');
-      const data = await res.json();
+      if (!res.ok) {
+        const err = await safeParseResponse(res);
+        throw new Error((err && (err.error || err.message)) || 'API error');
+      }
+      const data = await safeParseResponse(res);
       setResult(data);
     } catch (err) {
       setError('Failed to fetch forecast');

@@ -26,10 +26,16 @@ export default function MyBookingsPage() {
                     'Authorization': `Bearer ${token}`
                 }
             });
+            const safeParseResponse = async (res) => {
+                const text = await res.text();
+                if (!text) return null;
+                try { return JSON.parse(text); } catch (e) { console.warn('safeParseResponse: invalid JSON', e); return null; }
+            };
             if (!response.ok) {
-                throw new Error('Failed to fetch your bookings');
+                const err = await safeParseResponse(response);
+                throw new Error((err && (err.error || err.message)) || 'Failed to fetch your bookings');
             }
-            const data = await response.json();
+            const data = await safeParseResponse(response) || [];
             setBookings(data);
             setError(null);
         } catch (err) {
@@ -66,8 +72,10 @@ export default function MyBookingsPage() {
             if (!response.ok) {
                 let errorMsg = 'Failed to cancel booking';
                 try {
-                    const err = await response.json();
-                    errorMsg = err.error || errorMsg;
+                    const text = await response.text();
+                    let err = null;
+                    try { err = text ? JSON.parse(text) : null; } catch(e) { err = null; }
+                    errorMsg = (err && (err.error || err.message)) || errorMsg;
                 } catch (parseError) {
                     errorMsg = response.statusText || errorMsg;
                 }

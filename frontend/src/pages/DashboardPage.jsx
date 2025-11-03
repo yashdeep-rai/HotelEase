@@ -19,10 +19,16 @@ export default function DashboardPage() {
                         'Authorization': `Bearer ${token}`
                     }
                 });
+                const safeParseResponse = async (res) => {
+                    const text = await res.text();
+                    if (!text) return null;
+                    try { return JSON.parse(text); } catch (e) { console.warn('safeParseResponse: invalid JSON', e); return null; }
+                };
                 if (!response.ok) {
-                    throw new Error('Failed to fetch dashboard stats');
+                    const err = await safeParseResponse(response);
+                    throw new Error((err && (err.error || err.message)) || 'Failed to fetch dashboard stats');
                 }
-                const data = await response.json();
+                const data = await safeParseResponse(response) || {};
                 setStats(data);
                 setError(null);
             } catch (err) {

@@ -5,6 +5,11 @@ import './RegisterPage.css'; // Reuse form CSS
 import { FiUserPlus } from 'react-icons/fi'; // 1. Import icon
 
 export default function RegisterPage() {
+    const safeParseResponse = async (res) => {
+        const text = await res.text();
+        if (!text) return null;
+        try { return JSON.parse(text); } catch (e) { console.warn('safeParseResponse: invalid JSON', e); return null; }
+    };
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
@@ -33,9 +38,9 @@ export default function RegisterPage() {
                     role: 'guest' // Default role
                 }),
             });
-            const result = await response.json();
+            const result = await safeParseResponse(response) || {};
             if (!response.ok) {
-                throw new Error(result.error || 'Failed to register');
+                throw new Error(result.error || result.message || 'Failed to register');
             }
 
             setMessage('Registration successful! Please login.');

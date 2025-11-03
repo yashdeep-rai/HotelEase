@@ -6,6 +6,11 @@ import { useAuth } from '../context/AuthContext';
 import { FiTrash2, FiLogIn, FiLogOut } from 'react-icons/fi'; // 1. Import Check-in/out icons
 
 export default function BookingsListPage() {
+    const safeParseResponse = async (res) => {
+        const text = await res.text();
+        if (!text) return null;
+        try { return JSON.parse(text); } catch (e) { console.warn('safeParseResponse: invalid JSON', e); return null; }
+    };
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -25,8 +30,11 @@ export default function BookingsListPage() {
             const response = await fetch('/api/bookings', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (!response.ok) throw new Error('Failed to fetch bookings');
-            const data = await response.json();
+            if (!response.ok) {
+                const err = await safeParseResponse(response);
+                throw new Error((err && (err.error || err.message)) || 'Failed to fetch bookings');
+            }
+            const data = await safeParseResponse(response) || [];
             setBookings(data);
             setError(null);
         } catch (err) {
@@ -59,7 +67,9 @@ export default function BookingsListPage() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) { /* ... error handling ... */
-                let errorMsg = 'Failed to cancel booking'; try { const err = await response.json(); errorMsg = err.error || errorMsg; } catch (parseError) { errorMsg = response.statusText || errorMsg; } throw new Error(errorMsg);
+                let errorMsg = 'Failed to cancel booking';
+                try { const err = await safeParseResponse(response); errorMsg = (err && (err.error || err.message)) || errorMsg; } catch (parseError) { errorMsg = response.statusText || errorMsg; }
+                throw new Error(errorMsg);
             }
             // Success: Update UI and show info modal
             setBookings(prev => prev.filter(b => b.booking_id !== bookingToAction.booking_id));
@@ -104,8 +114,8 @@ export default function BookingsListPage() {
             });
 
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || `Failed to update status to ${newStatus}`);
+                const err = await safeParseResponse(response);
+                throw new Error((err && (err.error || err.message)) || `Failed to update status to ${newStatus}`);
             }
 
             // Success: Update UI and show info modal

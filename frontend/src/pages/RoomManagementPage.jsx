@@ -27,8 +27,16 @@ export default function RoomManagementPage() {
                 const response = await fetch('/api/rooms', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!response.ok) throw new Error('Failed to fetch rooms');
-                const data = await response.json();
+                const safeParseResponse = async (res) => {
+                    const text = await res.text();
+                    if (!text) return null;
+                    try { return JSON.parse(text); } catch (e) { console.warn('safeParseResponse: invalid JSON', e); return null; }
+                };
+                if (!response.ok) {
+                    const err = await safeParseResponse(response);
+                    throw new Error((err && (err.error || err.message)) || 'Failed to fetch rooms');
+                }
+                const data = await safeParseResponse(response) || [];
                 setRooms(data);
                 setRoomTypes(getRoomTypes(data)); // NEW: Set the room types for the filter
                 setError(null);
@@ -54,9 +62,14 @@ export default function RoomManagementPage() {
                 },
                 body: JSON.stringify({ status: newStatus }),
             });
+            const safeParseResponse = async (res) => {
+                const text = await res.text();
+                if (!text) return null;
+                try { return JSON.parse(text); } catch (e) { console.warn('safeParseResponse: invalid JSON', e); return null; }
+            };
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Failed to update status');
+                const err = await safeParseResponse(response);
+                throw new Error((err && (err.error || err.message)) || 'Failed to update status');
             }
             setRooms(prevRooms =>
                 prevRooms.map(room =>

@@ -5,6 +5,11 @@ import './RegisterPage.css'; // We'll reuse the register page's CSS
 import { FiLogIn } from 'react-icons/fi';
 
 export default function LoginPage() {
+    const safeParseResponse = async (res) => {
+        const text = await res.text();
+        if (!text) return null;
+        try { return JSON.parse(text); } catch (e) { console.warn('safeParseResponse: invalid JSON', e); return null; }
+    };
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
@@ -20,9 +25,9 @@ export default function LoginPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
-            const data = await response.json();
+            const data = await safeParseResponse(response) || {};
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to login');
+                throw new Error(data.error || data.message || 'Failed to login');
             }
 
             // Call login from AuthContext

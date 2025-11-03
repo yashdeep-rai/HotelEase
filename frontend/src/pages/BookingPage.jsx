@@ -67,9 +67,12 @@ export default function BookingPage() {
                     'Authorization': `Bearer ${token}` // 4. Add token to request
                 }
             });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                const err = await safeParseResponse(response);
+                throw new Error((err && (err.error || err.message)) || `HTTP error! status: ${response.status}`);
+            }
 
-            const data = await response.json();
+            const data = await safeParseResponse(response) || [];
             setRooms(data);
 
             // Fetch dynamic prices for each room type
@@ -79,11 +82,13 @@ export default function BookingPage() {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if (priceRes.ok) {
-                        const priceData = await priceRes.json();
-                        setDynamicPrices(prev => ({
-                            ...prev,
-                            [room.room_type_id]: priceData
-                        }));
+                        const priceData = await safeParseResponse(priceRes);
+                        if (priceData) {
+                            setDynamicPrices(prev => ({
+                                ...prev,
+                                [room.room_type_id]: priceData
+                            }));
+                        }
                     }
                 } catch (err) {
                     console.error('Failed to fetch dynamic price:', err);
@@ -173,11 +178,11 @@ export default function BookingPage() {
             });
 
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Booking failed!');
+                const err = await safeParseResponse(response);
+                throw new Error((err && (err.error || err.message)) || 'Booking failed!');
             }
 
-            const result = await response.json();
+            const result = await safeParseResponse(response) || {};
 
             setInfoModalContent({
                 title: 'Booking Successful!',
