@@ -21,7 +21,6 @@ CREATE TABLE RoomTypes (
     CHECK (MaxOccupancy > 0)
 ) ENGINE=InnoDB;
 
--- Rooms: individual room instances referencing a RoomType
 CREATE TABLE Rooms (
     RoomID INT AUTO_INCREMENT PRIMARY KEY,
     RoomNumber VARCHAR(10) NOT NULL UNIQUE,
@@ -38,6 +37,16 @@ CREATE TABLE Guests (
     Phone VARCHAR(20),
     DateOfBirth DATE,
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    guest_id INT,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('admin','guest') NOT NULL DEFAULT 'guest',
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (guest_id) REFERENCES Guests(GuestID) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- Users table for authentication / RBAC (links to Guests)
