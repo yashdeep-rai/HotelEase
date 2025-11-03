@@ -21,6 +21,13 @@ const getTomorrow = () => {
 };
 
 export default function BookingPage() {
+    // Small helper to safely parse JSON responses (returns null on empty/invalid body)
+    const safeParseResponse = async (res) => {
+        const text = await res.text();
+        if (!text) return null;
+        try { return JSON.parse(text); } catch (e) { console.warn('safeParseResponse: invalid JSON', e); return null; }
+    };
+
     // --- State Declarations ---
     const { user } = useAuth(); // 2. Call useAuth() INSIDE the component
 

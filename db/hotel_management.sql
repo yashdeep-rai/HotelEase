@@ -39,6 +39,8 @@ CREATE TABLE Guests (
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+
+
 CREATE TABLE users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     guest_id INT,
@@ -48,9 +50,6 @@ CREATE TABLE users (
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (guest_id) REFERENCES Guests(GuestID) ON DELETE SET NULL
 ) ENGINE=InnoDB;
-
--- Users table for authentication / RBAC (links to Guests)
-
 
 CREATE TABLE Bookings (
     BookingID INT AUTO_INCREMENT PRIMARY KEY,
@@ -88,15 +87,6 @@ CREATE INDEX idx_bookingguests_booking ON BookingGuests(BookingID);
 CREATE INDEX idx_bookingguests_guest ON BookingGuests(GuestID);
 CREATE INDEX idx_users_email ON users(email);
 
-CREATE TABLE users (
-    user_id INT AUTO_INCREMENT PRIMARY KEY,
-    guest_id INT,
-    email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role ENUM('admin','guest') NOT NULL DEFAULT 'guest',
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (guest_id) REFERENCES Guests(GuestID) ON DELETE SET NULL
-) ENGINE=InnoDB;
 
 INSERT INTO RoomTypes (TypeName, Description, BasePricePerNight, MaxOccupancy, BedConfiguration, Amenities)
 VALUES
