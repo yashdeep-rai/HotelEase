@@ -30,7 +30,7 @@ router.post('/register', async (req, res) => {
         const guestId = guestResult.insertId;
 
         // 2) Insert into users table referencing the created guest
-        const userInsert = 'INSERT INTO users (guest_id, email, password_hash, role) VALUES (?, ?, ?, ?)';
+        const userInsert = 'INSERT INTO users (GuestID, email, password_hash, role) VALUES (?, ?, ?, ?)';
         const [result] = await pool.query(userInsert, [guestId, email, password_hash, userRole]);
 
         res.status(201).json({ message: 'User created!', user_id: result.insertId });
@@ -57,7 +57,7 @@ router.post('/login', async (req, res) => {
     try {
         // Join users -> guests to fetch guest details alongside auth row
         const [rows] = await pool.query(
-            'SELECT u.user_id, u.guest_id, u.email, u.password_hash, u.role, g.FirstName, g.LastName FROM users u LEFT JOIN Guests g ON u.guest_id = g.GuestID WHERE u.email = ?',
+            'SELECT u.user_id, u.GuestID, u.email, u.password_hash, u.role, g.FirstName, g.LastName FROM users u LEFT JOIN Guests g ON u.GuestID = g.GuestID WHERE u.email = ?',
             [email]
         );
         if (rows.length === 0) {
@@ -76,7 +76,7 @@ router.post('/login', async (req, res) => {
         const payload = {
             user: {
                 id: user.user_id,
-                guest_id: user.guest_id,
+                guest_id: user.GuestID,
                 email: user.email,
                 role: user.role,
                 first_name: user.FirstName || null

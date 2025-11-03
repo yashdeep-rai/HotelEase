@@ -37,7 +37,7 @@ app.get('/api/rooms/available', authenticateToken, async (req, res) => {
         if (cached) return res.json(cached);
 
         const query = `
-            SELECT r.RoomID AS room_id, r.RoomNumber AS room_number, rt.TypeName AS room_type, rt.BasePricePerNight AS rate, r.Status AS status
+            SELECT r.RoomID, r.RoomNumber, rt.TypeName AS room_type, rt.BasePricePerNight AS rate, r.Status
             FROM Rooms r
             JOIN RoomTypes rt ON r.RoomTypeID = rt.RoomTypeID
             WHERE r.RoomID NOT IN (
@@ -69,12 +69,12 @@ app.post('/api/bookings', authenticateToken, async (req, res) => {
     }
 
     try {
-        // Find associated guest_id for this user (users.guest_id)
-        const [uRows] = await pool.query('SELECT guest_id FROM users WHERE user_id = ?', [user_id]);
-        if (uRows.length === 0 || !uRows[0].guest_id) {
+        // Find associated GuestID for this user (users.GuestID)
+        const [uRows] = await pool.query('SELECT GuestID FROM users WHERE user_id = ?', [user_id]);
+        if (uRows.length === 0 || !uRows[0].GuestID) {
             return res.status(400).json({ error: 'No linked guest profile found for this user' });
         }
-        const primaryGuestId = uRows[0].guest_id;
+        const primaryGuestId = uRows[0].GuestID;
 
         const insertQuery = `
             INSERT INTO Bookings (PrimaryGuestID, UserID, RoomID, CheckInDate, CheckOutDate, NumGuests, TotalAmount, Status)
@@ -161,7 +161,7 @@ app.delete('/api/bookings/:id', authenticateToken, async (req, res) => {
         await connection.beginTransaction();
 
         // 2. Get the booking details (normalized names)
-        const [rows] = await connection.query('SELECT UserID as user_id, RoomID as room_id, Status as status FROM Bookings WHERE BookingID = ?', [id]);
+        const [rows] = await connection.query('SELECT UserID, RoomID, Status FROM Bookings WHERE BookingID = ?', [id]);
 
         if (rows.length === 0) {
             await connection.rollback();
