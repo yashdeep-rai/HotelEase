@@ -5,7 +5,8 @@ import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 
 const router = express.Router();
-const JWT_SECRET = 'your_super_secret_key_change_this'; // IMPORTANT: Change this!
+// Use an environment-provided JWT secret in production. Keep a default for local dev.
+const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key_change_this'; // IMPORTANT: change in production
 
 // POST: Register a new user
 router.post('/register', async (req, res) => {
@@ -39,7 +40,9 @@ router.post('/register', async (req, res) => {
             return res.status(409).json({ error: 'Email already exists' });
         }
         console.error('Registration error:', error);
-        res.status(500).json({ error: 'Database insert failed' });
+        // Return the DB error message in development to help debugging
+        const errMsg = process.env.NODE_ENV === 'production' ? 'Database insert failed' : (error.message || 'Database insert failed');
+        res.status(500).json({ error: errMsg });
     }
 });
 
