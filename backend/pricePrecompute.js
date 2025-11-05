@@ -4,7 +4,37 @@
 
 import cron from 'node-cron';
 import pool from './db.js';
-import { suggestPrice } from './forecast.js';
+// If an external forecasting function isn't present, provide a safe fallback so
+// precompute can still run in development.
+
+/**
+ * Fallback suggestPrice implementation.
+ * Returns an object: { roomTypeId, date, basePrice, multiplier, suggestedPrice }
+ * It prefers RoomTypes.CurrentPricePerNight when available, otherwise uses BasePricePerNight.
+ */
+async function suggestPrice(pool, roomTypeId, fromDate, toDate) {
+  // Get base and current price
+  const [rows] = await pool.query(
+    'SELECT BasePricePerNight, CurrentPricePerNight FROM RoomTypes WHERE RoomTypeID = ?',
+    [roomTypeId]
+  );
+  if (!rows || rows.length === 0) {
+    throw new Error('RoomType not found');
+  }
+  const { BasePricePerNight: basePrice, CurrentPricePerNight: currentPrice } = rows[0];
+
+  const multiplier = currentPrice && basePrice ? +(currentPrice / basePrice).toFixed(2) : 1.0;
+  const suggestedPrice = +(basePrice * multiplier).toFixed(2);
+
+  return {
+    roomTypeId,
+    date: fromDate,
+    basePrice: +basePrice,
+    multiplier,
+    suggestedPrice
+  };
+}
+
 import { set as cacheSet } from './cache.js';
 
 // A small list of example holiday dates (YYYY-MM-DD) to boost prices.
@@ -66,7 +96,10 @@ export function startPrecompute() {
 
   // Schedule to run every day at 02:00 AM server time
   cron.schedule('0 2 * * *', () => {
-    console.log('Running scheduled precompute for next 30 days...');
+   // //console.log('Running scheduled precompute for next 30 days...');
     precomputeNextNDays(30).catch(err => console.error('Scheduled precompute failed', err));
   });
 }
+
+// Export suggestPrice so other modules (API endpoints) can compute on-demand
+export { suggestPrice };

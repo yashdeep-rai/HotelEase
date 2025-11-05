@@ -19,7 +19,7 @@ async function performDynamicPricing(pool, interval_seconds = 10) {
                 SET BasePricePerNight = ROUND(BasePricePerNight * ?, 2)
             `;
             await pool.query(updateQuery, [surgeMultiplier]);
-            console.log(`💰 Prices updated with surge multiplier ${surgeMultiplier}`);
+            //console.log(`💰 Prices updated with surge multiplier ${surgeMultiplier}`);
         }
 
         return {

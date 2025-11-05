@@ -1,15 +1,183 @@
+/* c: \Users\yashd\Documents\GitHub\DBMS-Project\HotelEase\frontend\src\pages\RoomManagementPage.css */
+
 .room-management-page {
+    display: block;
+    padding: 1.5rem;
+    min-height: calc(100vh - 80px);
+}
+
+.room-management-main {
     width: 100%;
+    overflow: visible;
+}
+
+/* New grid for the top three settings cards */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem; /* Space between grid and filter bar */
+}
+
+.admin-controls, .roomtype-controls {
+    background: #2c2c2c;
+    border: 1px solid #444;
+    border-radius: 10px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    position: relative; /* Ensure stacking context */
+    overflow: visible; /* Prevent clipping */
+}
+
+.admin-controls select, .roomtype-controls select {
+    margin-bottom: 1rem;
+}
+
+.admin-controls h3, .roomtype-controls h3 {
+    margin: 0 0 1rem 0;
+    color: #fff;
+    border-bottom: 1px solid #444;
+    padding-bottom: 0.75rem;
+}
+
+
+
+.settings-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.settings-row:last-child {
+    margin-bottom: 0;
+}
+
+.settings-row input[type="number"], .settings-row input[type="text"], .settings-row select {
+    background: #1e1e1e;
+    border: 1px solid #555;
+    color: #fff;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+
+
+.room-management-page {
+    color-scheme: dark;
+}
+
+.settings-row button.btn-primary {
+    background: linear-gradient(90deg, #6c63ff, #8a7bff);
+    color: white;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+}
+.settings-row button.btn-primary:hover { filter: brightness(1.1); }
+
+.toggle-wrap { display:flex; align-items:center; gap:0.75rem; width: 100%; }
+.toggle-wrap input[type="checkbox"] { position: absolute; left: -9999px; }
+.toggle-pill { width:44px; height:26px; background:#555; border-radius:999px; display:inline-block; position:relative; cursor:pointer; transition: background 0.18s; }
+.toggle-pill:after { content: ''; position: absolute; left:3px; top:3px; width:20px; height:20px; background:#fff; border-radius:50%; transition: transform 0.18s; }
+.toggle-wrap input[type="checkbox"]:checked + .toggle-pill { background: linear-gradient(90deg,#4ade80,#10b981); }
+.toggle-wrap input[type="checkbox"]:checked + .toggle-pill:after { transform: translateX(18px); }
+.toggle-text { color:#fff; font-weight:500; }
+
+.multiplier-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+.multiplier-label input {
+    width: 100px !important;
+    max-width: 40%;
+}
+
+.btn-small { background:#444; color:#fff; border:none; padding:0.45rem 0.6rem; border-radius:8px; cursor:pointer; margin-left:0.5rem }
+.btn-small:hover { filter:brightness(1.1) }
+
+.roomtype-controls .roomtype-row { display:flex; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:0.75rem }
+.roomtype-controls .roomtype-info { flex: 1; min-width: 150px; }
+.roomtype-controls .roomtype-set { display: flex; gap: 0.5rem; align-items: center;}
+
+.delete-btn.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #ff6b6b;
+    border: none;
+}
+
+
+.delete-btn.icon-btn:hover { filter:brightness(0.9) }
+.delete-btn.icon-btn svg { font-size: 1.05rem; }
+
+/* Full-width filter bar */
+.filter-bar {
+    display: flex;
+    gap: 1.5rem; /* More space between filters */
+    background: #2c2c2c;
+    border: 1px solid #444;
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1 1 200px; /* Allow filters to grow and shrink */
+}
+.filter-group label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+.filter-group select {
+    font-size: 1rem;
+    padding: 0.6rem 0.8rem;
+}
+
+.filter-results {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-align: left;
+    margin-bottom: 1rem;
+}
+
+.page-title {
+    margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+    color: #aaa;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
 }
 
 .room-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1.5rem;
-    margin-top: 2rem;
+    margin-top: 1rem;
 }
 
-/* NEW: Use the .card base style */
 .room-status-card {
     background-color: #242424;
     border: 1px solid #3a3a3a;
@@ -18,15 +186,16 @@
     text-align: left;
     transition: all 0.25s;
     border-left-width: 6px;
+    display: flex;
+    flex-direction: column;
 }
 
 .room-status-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    border-color: #4a4a4a;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+    border-color: #5a5a5a;
 }
 
-/* --- Status Color Coding (remains the same) --- */
 .room-status-card.available { border-left-color: #4ade80; }
 .room-status-card.occupied { border-left-color: #ff6b6b; }
 .room-status-card.maintenance { border-left-color: #f0ad4e; }
@@ -35,7 +204,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #3a3a3a;
     padding-bottom: 0.5rem;
     margin-bottom: 1rem;
 }
@@ -56,14 +224,16 @@
 }
 
 .room-status-card p {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     color: rgba(255, 255, 255, 0.7);
+    flex-grow: 1;
 }
 
 .status-control {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    margin-top: auto;
 }
 
 .status-control label {
@@ -71,44 +241,20 @@
     color: #fff;
 }
 
-/* Uses global <select> styles now, no need for .status-select */
-.status-control select {
-    flex: 1;
+.muted {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
 }
 
-/* --- NEW: Filter Bar Styles --- */
-.filter-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-    padding: 1.5rem 2rem;
-    background-color: #242424; /* Uses .card styles */
+.floor-section {
+    margin-bottom: 2rem;
 }
 
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    min-width: 200px;
-    flex: 1;
-}
-
-.filter-group label {
-    font-weight: 500;
-    font-size: 1rem;
+.floor-title {
+    font-size: 1.5rem;
     color: #fff;
-    text-align: left;
-}
-
-.filter-group select {
-    font-size: 1rem;
-    padding: 0.75em 1em;
-}
-
-.filter-results {
-    font-size: 1rem;
-    color: rgba(255, 255, 255, 0.7);
-    text-align: left;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #444;
+    padding-bottom: 0.5rem;
 }

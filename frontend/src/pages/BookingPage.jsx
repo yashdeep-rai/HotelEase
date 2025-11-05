@@ -4,7 +4,7 @@ import './BookingPage.css';
 import Modal from '../components/Modal';
 import '../components/Modal.css';
 import { useAuth } from '../context/AuthContext'; // 1. Import useAuth
-import { FiSearch, FiSend } from 'react-icons/fi'; // 1. Import icons
+import { FiSearch, FiSend, FiArrowUp, FiArrowDown, FiMinus } from 'react-icons/fi'; // 1. Import icons
 
 // Helper function to get today's date in 'YYYY-MM-DD' format
 const getToday = () => {
@@ -32,6 +32,8 @@ export default function BookingPage() {
     const { user } = useAuth(); // 2. Call useAuth() INSIDE the component
 
     const [rooms, setRooms] = useState([]);
+    const [filterType, setFilterType] = useState('all');
+    const [filterFloor, setFilterFloor] = useState('all');
 
     // State for dates
     const [checkIn, setCheckIn] = useState(getToday());
@@ -48,6 +50,7 @@ export default function BookingPage() {
     const [modalContent, setModalContent] = useState({ title: '', body: '' });
     const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
     const [infoModalContent, setInfoModalContent] = useState({ title: '', body: '' });
+    const [bookingLoading, setBookingLoading] = useState(false);
 
     // --- Data Fetching ---
 
@@ -71,35 +74,33 @@ const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
         }
 
         const data = await safeParseResponse(response) || {};
-        setRooms(data.rooms || []);  // ✅ Fix: display the rooms correctly
-        console.log("Available rooms:", data.rooms);
-
-        // Optional: map room types to numeric IDs
-        const roomTypeMap = { "Single": 1, "Double": 2, "Suite": 3 };
-
-        const pricePromises = (data.rooms || []).map(async room => {
-            try {
-                const roomTypeID = roomTypeMap[room.room_type];
-                const priceRes = await fetch(
-                    `/api/forecast/price?roomTypeID=${roomTypeID}&from=${searchCheckIn}&to=${searchCheckOut}`,
-                    { headers: { 'Authorization': `Bearer ${token}` } }
-                );
-
-                if (priceRes.ok) {
-                    const priceData = await safeParseResponse(priceRes);
-                    if (priceData) {
-                        setDynamicPrices(prev => ({
-                            ...prev,
-                            [roomTypeID]: priceData
-                        }));
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to fetch dynamic price:', err);
+        // Normalize room objects to a consistent shape so frontend doesn't depend on DB column casing
+        const rawRooms = data.rooms || [];
+        const normalized = rawRooms.map((r, i) => ({
+            room_id: r.room_id ?? r.RoomID ?? r.RoomId ?? `rid_${i}`,
+            room_number: r.room_number ?? r.RoomNumber ?? r.RoomNo ?? r.Room ?? '',
+            room_type_id: r.room_type_id ?? r.RoomTypeID ?? r.roomTypeID ?? null,
+            room_type: r.room_type ?? r.TypeName ?? r.roomType ?? '',
+            rate: r.rate ?? r.CurrentPricePerNight ?? r.BasePricePerNight ?? r.Rate ?? 0,
+            status: r.status ?? r.Status ?? 'Available',
+            __raw: r
+        }));
+        setRooms(normalized);
+        // Fetch dynamic price suggestions for the room types present (using normalized data)
+        try {
+            const token = localStorage.getItem('token');
+            const types = Array.from(new Set(normalized.map(r => r.room_type_id).filter(Boolean)));
+            if (types.length > 0) {
+                const promises = types.map(rt => fetch(`/api/forecast/price?roomTypeID=${rt}&from=${searchCheckIn}`, { headers: { 'Authorization': `Bearer ${token}` } }).then(res => res.ok ? res.json() : null).catch(() => null));
+                const results = await Promise.all(promises);
+                const map = {};
+                results.forEach((r, i) => { if (r) map[types[i]] = r; });
+                setDynamicPrices(prev => ({ ...prev, ...map }));
             }
-        });
-
-        await Promise.all(pricePromises);
+        } catch (e) {
+            // non-fatal: keep rooms displayed
+            console.warn('Failed to fetch dynamic prices', e);
+        }
 
     } catch (err) {
         console.error("Failed to fetch rooms:", err);
@@ -130,6 +131,7 @@ const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
 
     // This function opens the confirmation modal
     const handleBookRoom = (room) => {
+        //console.log(user)
         // 6. Get guest name from the logged-in user
         const guestName = user ? `${user.first_name} ${user.last_name}` : 'Logged-in User';
 
@@ -152,10 +154,13 @@ const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
 
     // This function runs when "Confirm" is clicked
     const handleConfirmBooking = async () => {
-        if (!roomToBook || !user) return;
-
-        setIsModalOpen(false);
-
+       
+       // //console.log(user_id, room_id, check_in_date, check_out_date)
+         if (!roomToBook || !user) return;
+//!user_id || !room_id || !check_in_date || !check_out_date
+    setIsModalOpen(false);
+    setBookingLoading(true);
+        //console.log(roomToBook)
         const date1 = new Date(checkIn);
         const date2 = new Date(checkOut);
         const diffTime = Math.abs(date2 - date1);
@@ -163,13 +168,13 @@ const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
         const ratePerNight = dynamicPrices[roomToBook.room_type_id]?.suggestedPrice || roomToBook.rate;
         const totalAmount = diffDays * ratePerNight;
 
-        // 7. Use the logged-in user's ID
+        // 7. Prepare booking details (server uses authenticated token for user)
         const bookingDetails = {
-            guest_id: user.id, // This is now user_id, but our backend handles it
-            room_id: roomToBook.room_id,
+            room_id: roomToBook.room_id ?? roomToBook.RoomID ?? roomToBook.__raw?.RoomID,
             check_in_date: checkIn,
             check_out_date: checkOut,
-            total_amount: totalAmount
+            total_amount: totalAmount,
+            num_guests: 1,
         };
 
         try {
@@ -205,10 +210,44 @@ const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
                 body: err.message
             });
             setIsInfoModalOpen(true);
+            // Refresh the available rooms so UI reflects current state (e.g., someone else booked it)
+            try { fetchAvailableRooms(checkIn, checkOut); } catch (e) { /* ignore */ }
         } finally {
             setRoomToBook(null);
+            setBookingLoading(false);
         }
     };
+
+    // derive filters and grouped floors
+    const getFloorFromRoomNumber = (rn) => {
+        if (!rn && rn !== 0) return '0';
+        const s = String(rn);
+        // find first run of digits
+        const m = s.match(/\d+/);
+        if (!m) return '0';
+        const digits = m[0];
+        // common hotel numbering: first digit(s) indicate floor (e.g., 101 -> 1)
+        return digits.length >= 3 ? digits.slice(0, digits.length - 2) : digits[0];
+    };
+
+    // Apply filters
+    const filteredRooms = rooms.filter(r => {
+        if (filterType !== 'all' && String(r.room_type_id) !== String(filterType)) return false;
+        if (filterFloor !== 'all' && String(getFloorFromRoomNumber(r.room_number)) !== String(filterFloor)) return false;
+        return true;
+    });
+
+    const floorsMap = {};
+    filteredRooms.forEach(r => {
+        const floor = getFloorFromRoomNumber(r.room_number) ?? '0';
+        if (!floorsMap[floor]) floorsMap[floor] = [];
+        floorsMap[floor].push(r);
+    });
+
+    const sortedFloorKeys = Object.keys(floorsMap).sort((a,b)=> Number(a)-Number(b));
+
+    // Colors for floors
+    const floorColors = ['#6EE7B7','#FFD580','#A3E1FF','#F7A8B8','#C7B3FF','#FFDAA5'];
 
     // --- JSX Return ---
     return (
@@ -217,6 +256,7 @@ const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onConfirm={handleConfirmBooking}
+                confirmLoading={bookingLoading}
                 title={modalContent.title}
             >
                 {modalContent.body}
@@ -257,8 +297,27 @@ const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
                         required
                     />
                 </div>
+                {/* Filters */}
+                <div className="date-group">
+                    <label htmlFor="filter-type">Room Type</label>
+                    <select id="filter-type" value={filterType} onChange={(e)=>setFilterType(e.target.value)}>
+                        <option value="all">All</option>
+                        {Array.from(new Set(rooms.map(r=>r.room_type_id).filter(Boolean))).map(rt => (
+                            <option key={rt} value={rt}>{rooms.find(x=>x.room_type_id===rt)?.room_type || `Type ${rt}`}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="date-group">
+                    <label htmlFor="filter-floor">Floor</label>
+                    <select id="filter-floor" value={filterFloor} onChange={(e)=>setFilterFloor(e.target.value)}>
+                        <option value="all">All</option>
+                        {Array.from(new Set(rooms.map(r=>getFloorFromRoomNumber(r.room_number)))).sort((a,b)=>Number(a)-Number(b)).map(f => (
+                            <option key={f} value={f}>Floor {f}</option>
+                        ))}
+                    </select>
+                </div>
                 <button type="submit" className="search-btn">
-                    <FiSearch className="btn-icon" /> Search Rooms {/* 2. Add icon */}
+                    {loading ? <span className="spinner"/> : <FiSearch className="btn-icon" />} {loading ? 'Searching...' : 'Search Rooms'}
                 </button>
             </form>
 
@@ -267,41 +326,64 @@ const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
             {/* --- Room List --- */}
             {loading && <p>Searching for available rooms...</p>}
             {roomError && <p className="error-message">{roomError}</p>}
-
             <div className="room-list">
                 {!loading && hasSearched && (
                     rooms.length > 0 ? (
-                        rooms.map(room => (
-                            <div key={room.room_id} className="card room-card"> {/* Used .card */}
-                                <div className="room-card-header">
-                                    <h3>Room {room.room_number}</h3>
-                                    <span className="room-type">{room.room_type}</span>
+                        // Group by floor and render sections
+                        sortedFloorKeys.map((floorKey, fidx) => (
+                            <section key={`floor_${floorKey}`} className="floor-section">
+                                <h2 className="floor-title">Floor {floorKey}</h2>
+                                <div className="floor-rooms">
+                                    {floorsMap[floorKey].map((room, idx) => {
+                                        const key = room.room_id ?? room.__raw?.RoomID ?? `room_${floorKey}_${idx}`;
+                                        const dp = dynamicPrices[room.room_type_id];
+                                        // tolerate multiple possible field names from the API
+                                        const suggested = dp?.suggestedPrice ?? dp?.suggested_price ?? dp?.price ?? room.__raw?.SuggestedPrice ?? room.rate;
+                                        // determine original/base price (prefer suggestion's basePrice if available, otherwise room raw base fields)
+                                        const basePrice = dp?.basePrice ?? dp?.base_price ?? room.__raw?.BasePricePerNight ?? room.__raw?.BasePrice ?? room.__raw?.base_price ?? room.__raw?.BaseRate ?? room.__raw?.Rate ?? room.rate;
+                                        const delta = suggested - basePrice;
+                                        const pct = basePrice ? Math.round((delta / Math.abs(basePrice)) * 100) : 0;
+                                        let DeltaIcon = FiMinus;
+                                        let deltaColor = '#999';
+                                        if (delta > 0) { DeltaIcon = FiArrowUp; deltaColor = '#ff6b6b'; } // price increased
+                                        else if (delta < 0) { DeltaIcon = FiArrowDown; deltaColor = '#2ecc71'; } // price decreased
+
+                                        const accent = floorColors[Number(fidx) % floorColors.length];
+
+                                        return (
+                                            <div key={key} className="card room-card" style={{ ['--accent-color']: accent }}>
+                                                <div className="room-card-header">
+                                                    <h3>Room {room.room_number}</h3>
+                                                    <span className="room-type">{room.room_type}</span>
+                                                </div>
+                                                <div className="room-price-info">
+                                                    <div className="dynamic-price">
+                                                        <p className="suggested-price">
+                                                            <strong>Today's Rate:</strong> ₹{suggested} / night
+                                                            <span className="price-delta" style={{ color: deltaColor }}>
+                                                                <DeltaIcon className="btn-icon" /> {Math.abs(pct)}%
+                                                            </span>
+                                                        </p>
+                                                        {dp?.holiday && (
+                                                            <span className="holiday-badge">Holiday Season</span>
+                                                        )}
+                                                        {dp?.occupancyRate > 0.7 && (
+                                                            <span className="high-demand-badge">High Demand</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleBookRoom(room)}
+                                                    className="btn-primary"
+                                                    disabled={loading || bookingLoading}
+                                                >
+                                                    {bookingLoading ? <span className="spinner"/> : <FiSend className="btn-icon" />} {bookingLoading ? 'Processing...' : 'Book Now'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                                <div className="room-price-info">
-                                    <p>
-                                        <strong>Base Rate:</strong> ₹{room.rate} / night
-                                    </p>
-                                    {dynamicPrices[room.room_type_id] && (
-                                        <div className="dynamic-price">
-                                            <p className="suggested-price">
-                                                <strong>Today's Rate:</strong> ₹{dynamicPrices[room.room_type_id].suggestedPrice} / night
-                                            </p>
-                                            {dynamicPrices[room.room_type_id].holiday && (
-                                                <span className="holiday-badge">Holiday Season</span>
-                                            )}
-                                            {dynamicPrices[room.room_type_id].occupancyRate > 0.7 && (
-                                                <span className="high-demand-badge">High Demand</span>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                <button
-                                    onClick={() => handleBookRoom(room)}
-                                    className="btn-primary"
-                                >
-                                    <FiSend className="btn-icon" /> Book Now {/* 3. Add icon */}
-                                </button>
-                            </div>
+                            </section>
                         ))
                     ) : (
                         <p>No available rooms for the selected dates.</p>

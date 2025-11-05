@@ -5,7 +5,7 @@ import './App.css';
 
 // Icons (remain the same)
 import { 
-    FiGrid, FiList, FiSettings, FiUsers, FiLogOut, FiLogIn, FiUserPlus, FiBookOpen, FiCalendar, FiHome, FiUser // 1. Added FiUser
+    FiGrid, FiList, FiSettings, FiUsers, FiLogOut, FiLogIn, FiUserPlus, FiBookOpen, FiCalendar, FiHome, FiUser, FiBriefcase // 1. Added FiUser
 } from 'react-icons/fi';
 
 // Page Imports (remain the same)
@@ -14,6 +14,7 @@ import BookingPage from './pages/BookingPage';
 import BookingsListPage from './pages/BookingsListPage';
 import MyBookingsPage from './pages/MyBookingsPage';
 import RoomManagementPage from './pages/RoomManagementPage';
+import HotelManagementPage from './pages/HotelManagementPage';
 import DashboardPage from './pages/DashboardPage';
 import UserManagementPage from './pages/UserManagementPage';
 import LoginPage from './pages/LoginPage';
@@ -126,6 +127,7 @@ function App() {
                                                 <NavLink to="/dashboard"><FiGrid className="nav-icon" /> Dashboard</NavLink>
                                                 <NavLink to="/bookings"><FiList className="nav-icon" /> All Bookings</NavLink>
                                                 <NavLink to="/rooms"><FiSettings className="nav-icon" /> Room Management</NavLink>
+                                                <NavLink to="/hotel-management"><FiBriefcase className="nav-icon" /> Hotel Management</NavLink>
                                                 <NavLink to="/users"><FiUsers className="nav-icon" /> User Management</NavLink>
                                                 <button onClick={handleLogout} className="dropdown-logout-btn">
                                                     <FiLogOut className="nav-icon" /> Logout
@@ -164,6 +166,7 @@ function App() {
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/bookings" element={<BookingsListPage />} />
                         <Route path="/rooms" element={<RoomManagementPage />} />
+                        <Route path="/hotel-management" element={<HotelManagementPage />} />
                         <Route path="/users" element={<UserManagementPage />} />
                         <Route path="/forecast" element={<ForecastDashboard />} />
                     </Route>

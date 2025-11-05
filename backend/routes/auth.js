@@ -5,8 +5,18 @@ import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 
 const router = express.Router();
-// Use an environment-provided JWT secret in production. Keep a default for local dev.
-const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key_change_this'; // IMPORTANT: change in production
+// Use an environment-provided JWT secret. In production this MUST be set.
+let JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    if (process.env.NODE_ENV === 'production') {
+        // Fail-fast in production
+        throw new Error('JWT_SECRET must be set in production environment');
+    } else {
+        // Developer convenience fallback (not for production)
+        console.warn('Warning: JWT_SECRET not set. Using insecure dev fallback. Set JWT_SECRET in .env for production.');
+        JWT_SECRET = 'dev_fallback_secret_change_me';
+    }
+}
 
 // POST: Register a new user
 router.post('/register', async (req, res) => {
@@ -89,7 +99,8 @@ router.post('/login', async (req, res) => {
                 guest_id: user.guest_id,
                 email: user.email,
                 role: user.role,
-                first_name: user.FirstName || null
+                first_name: user.FirstName || null,
+                last_name: user.LastName || null
             }
         };
 

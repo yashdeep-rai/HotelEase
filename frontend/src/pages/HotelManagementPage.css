@@ -1,0 +1,209 @@
+/* General Page Styles */
+.hotel-management-page {
+    padding: 2rem 3rem;
+    background-color: #1a1a1a;
+    color: #fff;
+}
+
+.hotel-management-main {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.page-title {
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+}
+
+.page-subtitle {
+    font-size: 1.2rem;
+    color: #a0a0a0;
+    margin-bottom: 3rem;
+}
+
+/* Management Container */
+.management-container {
+    background-color: #2a2a2a;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    padding: 2.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2.5rem;
+}
+
+/* Section Styles */
+.management-section {
+    background-color: #333;
+    border: 1px solid #444;
+    border-radius: 10px;
+    padding: 2rem;
+    transition: all 0.3s ease;
+}
+
+.management-section:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+.section-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 2rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #646cff;
+    display: inline-block;
+}
+
+.section-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.8rem;
+}
+
+/* Setting Item Styles */
+.setting-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.setting-item label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #a0a0a0;
+    margin-bottom: 0.8rem;
+}
+
+/* Input and Select Styles */
+input[type="number"],
+input[type="text"],
+select {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1px solid #555;
+    border-radius: 6px;
+    font-size: 1rem;
+    background-color: #222;
+    color: #fff;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+input[type="number"]:focus,
+input[type="text"]:focus,
+select:focus {
+    outline: none;
+    border-color: #646cff;
+    box-shadow: 0 0 0 3px rgba(100, 108, 255, 0.2);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 48px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-switch label {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #555;
+    border-radius: 34px;
+    transition: .4s;
+}
+
+.toggle-switch label:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: white;
+    border-radius: 50%;
+    transition: .4s;
+}
+
+input:checked + label {
+    background-color: #646cff;
+}
+
+input:checked + label:before {
+    transform: translate(26px, -50%);
+}
+
+/* Button Styles */
+.btn-save, .btn-set, .btn-add, .btn-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.1rem;
+    border: none;
+    border-radius: 1.5rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-save {
+    background-color: #646cff;
+    color: white;
+}
+
+.btn-save:hover {
+    background-color: #535bf2;
+}
+
+.input-with-button {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.input-with-button input {
+    flex-grow: 1;
+}
+
+.btn-set, .btn-add {
+    /* background-color: #2ecc71; */
+    background-color: transparent;
+    color: #27ae60;
+}
+
+.btn-set:hover, .btn-add:hover {
+    /* background-color: #27ae60; */
+    border-radius: 1.5rem;
+}
+
+/* Danger Zone */
+.danger-zone {
+    border-top: 1px solid #e74c3c;
+    padding-top: 1.5rem;
+    margin-top: 1rem;
+}
+
+.danger-zone label {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.btn-delete {
+    /* background-color: #e74c3c; */
+    background-color: transparent;
+    color: #e74c3c;
+}

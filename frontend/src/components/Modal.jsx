@@ -1,6 +1,6 @@
 import './Modal.css';
 
-export default function Modal({ isOpen, onClose, onConfirm, title, children }) {
+export default function Modal({ isOpen, onClose, onConfirm, title, children, confirmLoading = false }) {
     if (!isOpen) {
         return null;
     }
@@ -18,11 +18,11 @@ export default function Modal({ isOpen, onClose, onConfirm, title, children }) {
                     {children}
                 </div>
                 <div className="modal-footer">
-                    <button onClick={onClose} className="btn btn-secondary">
+                    <button onClick={onClose} className="btn btn-secondary" disabled={confirmLoading}>
                         Cancel
                     </button>
-                    <button onClick={onConfirm} className="btn btn-primary">
-                        Confirm
+                    <button onClick={onConfirm} className="btn btn-primary" disabled={confirmLoading}>
+                        {confirmLoading ? (<><span className="spinner"/> Processing...</>) : 'Confirm'}
                     </button>
                 </div>
             </div>
