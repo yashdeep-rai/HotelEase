@@ -52,57 +52,63 @@ export default function BookingPage() {
     // --- Data Fetching ---
 
     // Fetch available rooms
-    const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
-        try {
-            setLoading(true);
-            setHasSearched(true);
-            setRoomError(null);
-            setRooms([]);
+const fetchAvailableRooms = async (searchCheckIn, searchCheckOut) => {
+    try {
+        setLoading(true);
+        setHasSearched(true);
+        setRoomError(null);
+        setRooms([]);
 
-            // 3. Get token from auth context to send
-            const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token');
 
-            const response = await fetch(`/api/rooms/available?check_in=${searchCheckIn}&check_out=${searchCheckOut}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}` // 4. Add token to request
-                }
-            });
-            if (!response.ok) {
-                const err = await safeParseResponse(response);
-                throw new Error((err && (err.error || err.message)) || `HTTP error! status: ${response.status}`);
-            }
+        const response = await fetch(`/api/rooms/available?check_in=${searchCheckIn}&check_out=${searchCheckOut}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-            const data = await safeParseResponse(response) || [];
-            setRooms(data);
-
-            // Fetch dynamic prices for each room type
-            const pricePromises = data.map(async room => {
-                try {
-                    const priceRes = await fetch(`/api/forecast/price?roomTypeID=${room.room_type_id}&from=${searchCheckIn}&to=${searchCheckOut}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (priceRes.ok) {
-                        const priceData = await safeParseResponse(priceRes);
-                        if (priceData) {
-                            setDynamicPrices(prev => ({
-                                ...prev,
-                                [room.room_type_id]: priceData
-                            }));
-                        }
-                    }
-                } catch (err) {
-                    console.error('Failed to fetch dynamic price:', err);
-                }
-            });
-            await Promise.all(pricePromises);
-
-        } catch (err) {
-            console.error("Failed to fetch rooms:", err);
-            setRoomError("Failed to load available rooms for the selected dates.");
-        } finally {
-            setLoading(false);
+        if (!response.ok) {
+            const err = await safeParseResponse(response);
+            throw new Error((err && (err.error || err.message)) || `HTTP error! status: ${response.status}`);
         }
-    };
+
+        const data = await safeParseResponse(response) || {};
+        setRooms(data.rooms || []);  // ✅ Fix: display the rooms correctly
+        console.log("Available rooms:", data.rooms);
+
+        // Optional: map room types to numeric IDs
+        const roomTypeMap = { "Single": 1, "Double": 2, "Suite": 3 };
+
+        const pricePromises = (data.rooms || []).map(async room => {
+            try {
+                const roomTypeID = roomTypeMap[room.room_type];
+                const priceRes = await fetch(
+                    `/api/forecast/price?roomTypeID=${roomTypeID}&from=${searchCheckIn}&to=${searchCheckOut}`,
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+
+                if (priceRes.ok) {
+                    const priceData = await safeParseResponse(priceRes);
+                    if (priceData) {
+                        setDynamicPrices(prev => ({
+                            ...prev,
+                            [roomTypeID]: priceData
+                        }));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch dynamic price:', err);
+            }
+        });
+
+        await Promise.all(pricePromises);
+
+    } catch (err) {
+        console.error("Failed to fetch rooms:", err);
+        setRoomError("Failed to load available rooms for the selected dates.");
+    } finally {
+        setLoading(false);
+    }
+};
+
 
     // 5. REMOVED: The useEffect for fetchGuests is no longer needed.
 

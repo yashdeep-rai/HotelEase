@@ -23,41 +23,143 @@ app.use('/api/auth', authRoutes);
 
 // --- Guest & Admin Routes ---
 
-// GET: Find available rooms
-app.get('/api/rooms/available', authenticateToken, async (req, res) => {
-    const { check_in, check_out } = req.query;
+let availableRoomRequestCount = 0;
+let usersWhoRequested = new Set();  // stores unique users in current interval
+let requestTimestamps = [];         // timestamps of availability requests
 
-    if (!check_in || !check_out) {
-        return res.status(400).json({ error: 'Missing check_in or check_out dates' });
+// ---------- Helper: clean old timestamps ----------
+function cleanOldRequests(intervalMs) {
+    const cutoff = Date.now() - intervalMs;
+    requestTimestamps = requestTimestamps.filter(ts => ts >= cutoff);
+}
+
+// ---------- Helper: surge calculation ----------
+function calculateSurgeMultiplier(requests, availableRooms) {
+    if (availableRooms === 0) return 2.0; // max surge if none available
+    availableRooms = 1
+    const demandRatio = requests / availableRooms;
+
+    if (demandRatio < 1) return 1.0;
+    if (demandRatio < 2) return 1.1;
+    if (demandRatio < 3) return 1.25;
+    if (demandRatio < 5) return 1.5;
+    return 2.0;
+}
+
+// ---------- Private Dynamic Pricing Function ----------
+// ---------- Private Dynamic Pricing Function ----------
+async function performDynamicPricing(pool, interval_seconds = 60) {
+    try {
+        const intervalMs = interval_seconds * 1000;
+
+        cleanOldRequests(intervalMs);
+        const recentRequests = requestTimestamps.length;
+
+        const [rooms] = await pool.query(`SELECT COUNT(*) AS available FROM Rooms WHERE Status = 'Available'`);
+        const availableRooms = rooms[0].available;
+
+        let surgeMultiplier = calculateSurgeMultiplier(recentRequests, availableRooms);
+
+        // 🌙 Night-time surge
+        const now = new Date();
+        const hour = now.getHours();
+        if (hour >= 21 || hour < 4) {
+            surgeMultiplier *= 1.15;
+            console.log("🌙 Night-time surge applied!");
+        }
+
+        // Apply surge only if there’s significant demand
+        if (recentRequests >= 2) {
+            await pool.query(`
+                UPDATE RoomTypes
+                SET CurrentPricePerNight = ROUND(BasePricePerNight * ?, 2)
+            `, [surgeMultiplier]);
+            console.log(`💰 Dynamic pricing applied! Multiplier = ${surgeMultiplier.toFixed(2)}`);
+        } else {
+            // 💤 Low demand → reset to base price
+            await pool.query(`
+                UPDATE RoomTypes
+                SET CurrentPricePerNight = BasePricePerNight
+            `);
+            console.log("💤 Demand low, prices reset to base.");
+        }
+
+        // Log metrics
+        console.log(`📊 [Dynamic Pricing Interval Ended]
+            Unique Users: ${usersWhoRequested.size}
+            Requests: ${recentRequests}
+            Available Rooms: ${availableRooms}
+            Surge Multiplier: ${surgeMultiplier.toFixed(2)}
+        `);
+
+        // Reset for next window
+        usersWhoRequested.clear();
+        availableRoomRequestCount = 0;
+        requestTimestamps = [];
+
+        return { recentRequests, availableRooms, surgeMultiplier };
+    } catch (err) {
+        console.error('❌ Dynamic pricing update failed:', err);
+    }
+}
+
+
+// ---------- API Route: Get Available Rooms ----------
+app.get('/api/rooms/available', authenticateToken, async (req, res) => {
+    const userId = req.user?.id;
+
+    if (userId && !usersWhoRequested.has(userId)) {
+        usersWhoRequested.add(userId);
+        availableRoomRequestCount++;
+        requestTimestamps.push(Date.now());
     }
 
-    try {
-        const cacheKey = `availability:${check_in}:${check_out}`;
-        const cached = await cacheGet(cacheKey);
-        if (cached) return res.json(cached);
+    const { check_in, check_out } = req.query;
+    if (!check_in || !check_out)
+        return res.status(400).json({ error: 'Missing check_in or check_out' });
 
+    try {
         const query = `
-            SELECT r.RoomID, r.RoomNumber, rt.TypeName AS room_type, rt.BasePricePerNight AS rate, r.Status
+            SELECT r.RoomID, r.RoomNumber, rt.TypeName AS room_type,
+                   rt.CurrentPricePerNight AS rate, r.Status
             FROM Rooms r
             JOIN RoomTypes rt ON r.RoomTypeID = rt.RoomTypeID
             WHERE r.RoomID NOT IN (
-                    SELECT b.RoomID FROM Bookings b
-                    WHERE b.Status != 'Cancelled' AND (
-                            (b.CheckInDate <= ? AND b.CheckOutDate > ?) OR
-                            (b.CheckInDate < ? AND b.CheckOutDate >= ?) OR
-                            (b.CheckInDate >= ? AND b.CheckOutDate <= ?)
-                    )
-            ) AND r.Status = 'Available';
+                SELECT b.RoomID FROM Bookings b
+                WHERE b.Status != 'Cancelled' AND (
+                    (b.CheckInDate <= ? AND b.CheckOutDate > ?) OR
+                    (b.CheckInDate < ? AND b.CheckOutDate >= ?) OR
+                    (b.CheckInDate >= ? AND b.CheckOutDate <= ?)
+                )
+            )
+            AND r.Status = 'Available';
         `;
+
         const [rows] = await pool.query(query, [check_in, check_in, check_out, check_out, check_in, check_out]);
-        // cache for short time (60s)
-        await cacheSet(cacheKey, rows, 60);
-        res.json(rows);
+        res.json({
+            unique_user_request_count: availableRoomRequestCount,
+            rooms: rows
+        });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Database query failed' });
     }
 });
+
+// ---------- Automatic Dynamic Pricing Every 60s ----------
+setInterval(() => {
+    performDynamicPricing(pool, 10)
+        .then(data => {
+            if (data)
+                console.log(`✅ Pricing recalculated | Requests: ${data.recentRequests} | Available: ${data.availableRooms} | Surge: ${data.surgeMultiplier}`);
+        })
+        .catch(err => console.error('Dynamic pricing failed:', err));
+}, 5000);
+
+
+
+
 
 // POST: Create a new booking (for the logged-in user)
 app.post('/api/bookings', authenticateToken, async (req, res) => {
@@ -122,6 +224,60 @@ app.get('/api/bookings/mybookings', authenticateToken, async (req, res) => {
         }
 });
 
+// DELETE: Cancel/Delete a booking
+// (This route is accessible to all authenticated users,
+// but you could add logic to check if req.user.id === booking.user_id)
+app.delete('/api/bookings/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  let connection; // Define connection outside the try block
+
+        try {
+        // 1. Get connection
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // 2. Get the booking details (normalized names)
+        const [rows] = await connection.query('SELECT UserID as user_id, RoomID as room_id, Status as status FROM Bookings WHERE BookingID = ?', [id]);
+
+        if (rows.length === 0) {
+            await connection.rollback();
+            connection.release(); 
+            return res.status(404).json({ error: 'Booking not found' });
+        }
+
+        const { room_id, status } = rows[0];
+
+    // Optional: Check if user is admin OR the owner of the booking
+    if (req.user.role !== 'admin' && req.user.id !== rows[0].user_id) {
+      await connection.rollback();
+      connection.release();
+      return res.status(403).json({ error: 'Access denied: You do not own this booking' });
+    }
+
+    // 3. Delete the booking
+    await connection.query('DELETE FROM Bookings WHERE BookingID = ?', [id]);
+
+    // 4. If the booking was active, set the room back to 'Available'
+    if (status === 'Confirmed' || status === 'Checked-In') {
+        await connection.query("UPDATE Rooms SET Status = 'Available' WHERE RoomID = ?", [room_id]);
+    }
+
+    // 5. If all queries succeeded, commit the changes
+    await connection.commit();
+    res.json({ message: 'Booking cancelled successfully' });
+
+  } catch (error) {
+    // 6. If ANYTHING fails, roll back and send a JSON error
+    if (connection) await connection.rollback(); 
+    console.error(error);
+    res.status(500).json({ error: 'Database transaction failed' });
+  
+  } finally {
+    // 7. ALWAYS release the connection
+    if (connection) connection.release(); 
+  }
+});
+
 
 // --- ADMIN-ONLY ROUTES ---
 // All routes below require both a valid token AND an 'admin' role
@@ -148,59 +304,7 @@ app.get('/api/dashboard/stats', authenticateToken, authorizeRole('admin'), async
     }
 });
 
-// DELETE: Cancel/Delete a booking
-// (This route is accessible to all authenticated users,
-// but you could add logic to check if req.user.id === booking.user_id)
-app.delete('/api/bookings/:id', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  let connection; // Define connection outside the try block
 
-        try {
-        // 1. Get connection
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-
-        // 2. Get the booking details (normalized names)
-        const [rows] = await connection.query('SELECT UserID as user_id, RoomID as room_id, Status as status FROM Bookings WHERE BookingID = ?', [id]);
-
-        if (rows.length === 0) {
-            await connection.rollback();
-            connection.release(); 
-            return res.status(404).json({ error: 'Booking not found' });
-        }
-
-        const { room_id, status } = rows[0];
-
-    // Optional: Check if user is admin OR the owner of the booking
-    // if (req.user.role !== 'admin' && req.user.id !== rows[0].user_id) {
-    //   await connection.rollback();
-    //   connection.release();
-    //   return res.status(403).json({ error: 'Access denied: You do not own this booking' });
-    // }
-
-    // 3. Delete the booking
-    await connection.query('DELETE FROM Bookings WHERE BookingID = ?', [id]);
-
-    // 4. If the booking was active, set the room back to 'Available'
-    if (status === 'Confirmed' || status === 'Checked-In') {
-        await connection.query("UPDATE Rooms SET Status = 'Available' WHERE RoomID = ?", [room_id]);
-    }
-
-    // 5. If all queries succeeded, commit the changes
-    await connection.commit();
-    res.json({ message: 'Booking cancelled successfully' });
-
-  } catch (error) {
-    // 6. If ANYTHING fails, roll back and send a JSON error
-    if (connection) await connection.rollback(); 
-    console.error(error);
-    res.status(500).json({ error: 'Database transaction failed' });
-  
-  } finally {
-    // 7. ALWAYS release the connection
-    if (connection) connection.release(); 
-  }
-});
 
 
 // --- ADMIN-ONLY ROUTES ---

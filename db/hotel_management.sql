@@ -129,4 +129,8 @@ VALUES
  FALSE);
 
 
+ALTER TABLE RoomTypes
+ADD COLUMN CurrentPricePerNight DECIMAL(10,2) AFTER BasePricePerNight;
 
+UPDATE RoomTypes
+SET CurrentPricePerNight = BasePricePerNight;
